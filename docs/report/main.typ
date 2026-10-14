@@ -2,17 +2,15 @@
 #import "obsidian.typ": render_markdown
 
 #show: it => basic-report(
-  doc-category: "TODO",
-  doc-title: "TODO",
-  author: "TODO",
+  doc-category: "Report",
+  doc-title: "Security",
+  author: "Sky Martin - ST10286905, Lyle William Richardson - ST10322521, James Marshall - ST10434366, Connaire Myall - ST10297849",
   language: "en",
   it,
 )
 
 #render_markdown(
-  "main.md",
-  "reports/Main_Report.md",
-  "reports/ST10322521_Report.md",
+  "main.md"
 )
 
 #pagebreak()
