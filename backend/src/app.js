@@ -29,6 +29,8 @@ const { requestLogger } = require("./middleware/request-logger.middleware");
  
 const app = express();
 
+app.set("trust proxy", 1);
+
 app.get("/health", (req, res) => {
   const databaseReady = mongoose.connection.readyState === 1;
 

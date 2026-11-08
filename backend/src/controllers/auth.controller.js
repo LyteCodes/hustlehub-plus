@@ -6,7 +6,6 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const config = require("../config");
-const UserModel = require("../models/user.model");
 const User = require("../models/user");
 const logger = require("../lib/logger");
 const { checkPwnedPassword } = require("../lib/pwnedPassword");
@@ -181,13 +180,13 @@ exports.login = async (req, res, next) => {
  */
 exports.me = async (req, res, next) => {
   try {
-    const user = await UserModel.findById(req.user.id);
+    const user = await User.findById(req.user.id);
     if (!user)
       return res.status(404).json({
         error: { code: "USER_NOT_FOUND", message: "User not found." },
       });
 
-    const { passwordHash, ...safeUserData } = user;
+    const { password, ...safeUserData } = user.toObject();
     return res.status(200).json({ user: safeUserData });
   } catch (err) {
     next(err);
