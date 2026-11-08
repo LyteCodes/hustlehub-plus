@@ -226,6 +226,116 @@ sequenceDiagram
 
 ```
 
+# Tax Engine (own feature)
+
+The HustleHub+ platform includes a freelancer income-tax estimation engine (`src/lib/estimateTax.js`) that applies the South African Revenue Service (SARS) 2026/27 individual income-tax tables to a freelancer's completed transaction history. The engine is exposed via the authenticated endpoint `GET /api/me/income-summary` and is restricted to users with the `freelancer` role.
+
+## Design Principles
+
+All monetary values are stored and computed as **integer cents** (1/100 rand) throughout the engine. This eliminates floating-point rounding errors that accumulate when performing repeated multiplication on decimal rand amounts — a known hazard in financial calculations. Tax rates are stored in **basis points** (bps, where 10 000 bps = 100%) for the same reason, keeping every arithmetic step in integer space.
+
+The tax year follows the SARS convention: **1 March of year N to the last day of February of year N+1**. All date boundaries are computed in South African Standard Time (SAST, UTC+2) so that transactions recorded near midnight are attributed to the correct tax year.
+
+## SARS 2026/27 Tax Brackets
+
+The engine uses the following seven-bracket schedule (per `src/data/sars-2026-27.json`):
+
+| Taxable income (rand)         | Rate  |
+| ----------------------------- | ----- |
+| R0 – R245 900                 | 18%   |
+| R245 901 – R383 900           | 26%   |
+| R383 901 – R532 000           | 31%   |
+| R532 001 – R698 100           | 36%   |
+| R698 101 – R890 100           | 39%   |
+| R890 101 – R1 886 900         | 41%   |
+| R1 886 901+                   | 45%   |
+
+Tax within a bracket is computed as: `baseTax + round((income − threshold) × rateBps / 10000)`.
+
+## Age-Based Rebates
+
+SARS allows natural persons to deduct a primary rebate from gross tax before arriving at tax payable. Additional rebates apply at ages 65 and 75:
+
+| Rebate    | Applies to          | Amount (rand) |
+| --------- | ------------------- | ------------- |
+| Primary   | All taxpayers       | R17 820       |
+| Secondary | Age 65–74           | + R9 774      |
+| Tertiary  | Age 75+             | + R3 267      |
+
+## Calculation Flow
+
+```mermaid
+flowchart TD
+    A["Completed transactions\ngrouped by SARS tax year"] -->|sum amounts × 100| B["grossCents\n(YTD)"]
+    B -->|"× 10% platform fee"| C["platformFeeCents"]
+    B --> D["netCents = grossCents − platformFeeCents"]
+    C --> D
+    D -->|"× totalDays / ytdDays"| E["annualNetCents\n(projected full-year)"]
+    E -->|"bracket lookup"| F["taxBeforeRebateCents"]
+    F -->|"− age rebate"| G["annualTaxPayableCents"]
+    G -->|"× ytdDays / totalDays"| H["proratedTaxCents\n(current liability estimate)"]
+    G -->|"÷ 2"| I["IRP6 provisional\nfirst payment — due 31 Aug 2026"]
+    G --> J["IRP6 provisional\nsecond payment — due 28 Feb 2027"]
+```
+
+## Annualisation and Pro-Rating
+
+Because freelancers earn irregularly throughout the year, a snapshot taken mid-year would understate the annual tax liability. The engine annualises the YTD net income to a projected full-year figure before applying the bracket table, then pro-rates the resulting annual tax back to the elapsed days:
+
+```javascript
+// Annualise YTD net income
+const annualNetCents = Math.round(netCents * totalDays / ytdDays);
+
+// Compute annual tax on the projected figure, then pro-rate
+const proratedTaxCents = Math.round(annualTaxPayableCents * ytdDays / totalDays);
+```
+
+This approach mirrors the SARS provisional tax methodology and gives freelancers a realistic current-period liability rather than a figure that grows only as income accumulates.
+
+## Provisional Tax (IRP6)
+
+Freelancers who are not employees are required to pay provisional tax. The engine calculates the two IRP6 instalment amounts directly from the annual tax estimate and returns the SARS filing deadlines:
+
+| Payment        | Amount                   | Deadline      |
+| -------------- | ------------------------ | ------------- |
+| First payment  | 50% of annual estimate   | 31 Aug 2026   |
+| Second payment | Remaining 50%            | 28 Feb 2027   |
+| Voluntary top-up | Any shortfall           | 30 Sep 2027   |
+
+## Example Response
+
+```json
+{
+  "freelancerId": "68210fc2a1b2c3d4e5f67890",
+  "generatedAt": "2026-11-08T13:00:00.000Z",
+  "summary": [
+    {
+      "taxYear": "2026/27",
+      "taxYearPeriod": { "start": "2026-03-01", "end": "2027-02-28", "totalDays": 365, "ytdDays": 253 },
+      "transactionCount": 12,
+      "grossIncomeCents": 45000000,
+      "platformFeeRateBps": 1000,
+      "platformFeeCents": 4500000,
+      "netIncomeCents": 40500000,
+      "annualNetIncomeCents": 58400237,
+      "taxEstimate": {
+        "taxBeforeRebateCents": 14172673,
+        "rebateCents": 1782000,
+        "annualTaxPayableCents": 12390673,
+        "proratedTaxCents": 8582671,
+        "effectiveRatePct": "21.21%",
+        "marginalRatePct": "31.00%",
+        "provisionalTax": {
+          "firstPaymentCents": 6195336,
+          "secondPaymentCents": 6195337,
+          "dates": { "firstDeadline": "2026-08-31", "secondDeadline": "2027-02-28", "topUpDeadline": "2027-09-30" }
+        }
+      }
+    }
+  ]
+}
+```
+
 # System Security
 
 ## Client-side Input validation
