@@ -55,6 +55,8 @@ exports.create = async (req, res, next) => {
             });
         }
 
+        console.log("BOOKING DEBUG", require("mongoose").version, Booking.schema.path("status").instance, Object.keys(Booking.schema.path("status").$conditionalHandlers));
+
         const openBooking = await Booking.findOne({
             gig: gigExists._id,
             client: req.user.id,
