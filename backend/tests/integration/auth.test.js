@@ -249,7 +249,34 @@ describe("Auth Integration Tests", () => {
     });
 
     it("permits access when a valid bearer token is present (GET /me - Valid Token / Me Valid Token)", async () => {
-      assert.ok(authToken, "Test requires an active token from the login step");
+      const meUser = {
+        name: "Test Me Freelancer",
+        email: `test_me_${Date.now()}@hustlehub.co.za`,
+        password: "HhTest_9vK2mQ7x!2026",
+        role: "freelancer",
+      };
+
+      const registerRes = await request("/api/auth/register", {
+        method: "POST",
+        body: meUser,
+      });
+      assert.strictEqual(registerRes.status, 201, JSON.stringify(registerRes.body));
+
+      const loginRes = await request("/api/auth/login", {
+        method: "POST",
+        body: {
+          email: meUser.email,
+          password: meUser.password,
+        },
+      });
+      assert.strictEqual(loginRes.status, 200, JSON.stringify(loginRes.body));
+
+      const token = loginRes.body?.token;
+      assert.ok(
+        typeof token === "string" && token.length > 0,
+        "Login should return a non-empty token",
+      );
+
       const res = await request("/api/auth/me", {
         headers: { Authorization: `Bearer ${authToken}` },
       });
