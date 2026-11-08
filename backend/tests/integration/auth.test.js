@@ -15,7 +15,7 @@ const { describe, it, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const http = require("node:http");
 const app = require("../../src/app");
-const UserModel = require("../../src/models/user.model");
+const UserModel = require("../../src/models/user");
 
 describe("Auth Integration Tests", () => {
   let server;
@@ -23,14 +23,16 @@ describe("Auth Integration Tests", () => {
   let authToken;
 
   const testUser = {
+    name: "Test Freelancer",
     email: `test_${Date.now()}@hustlehub.co.za`,
-    password: "SecurePassword123!",
+    password: "HhTest_9vK2mQ7x!2026",
     role: "freelancer",
   };
 
   const httpTestUser = {
+    name: "HTTP Test Freelancer",
     email: `test_http_${Date.now()}@hustlehub.co.za`,
-    password: "SecurePassword123!",
+    password: "HhTest_9vK2mQ7x!2026",
     role: "freelancer",
   };
 
@@ -57,7 +59,7 @@ describe("Auth Integration Tests", () => {
   }
 
   before(async () => {
-    await UserModel.clear();
+    await UserModel.deleteMany({});
     server = http.createServer(app);
     await new Promise((resolve) => server.listen(0, resolve));
     baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -243,7 +245,7 @@ describe("Auth Integration Tests", () => {
         headers: { Authorization: "Bearer malformed.or.invalid.token" },
       });
       assert.strictEqual(res.status, 401);
-      assert.strictEqual(res.body?.error?.code, "INVALID_TOKEN");
+      assert.strictEqual(res.body?.error?.code, "UNAUTHORIZED");
     });
 
     it("permits access when a valid bearer token is present (GET /me - Valid Token / Me Valid Token)", async () => {
