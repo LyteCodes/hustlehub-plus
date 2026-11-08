@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const User = require("../models/user");
 const Gig = require("../models/gig");
 
@@ -110,13 +111,14 @@ exports.getGigs = async (req, res, next) => {
     const filter = {};
     if (search) {
       const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      filter.title = { $regex: escaped, $options: 'i' };
+      filter.title = mongoose.trusted({ $regex: escaped, $options: 'i' });
     }
     if (category) filter.category = category;
     if (minRate !== undefined || maxRate !== undefined) {
-      filter.rate = {};
-      if (minRate !== undefined) filter.rate.$gte = minRate;
-      if (maxRate !== undefined) filter.rate.$lte = maxRate;
+      const rate = {};
+      if (minRate !== undefined) rate.$gte = minRate;
+      if (maxRate !== undefined) rate.$lte = maxRate;
+      filter.rate = mongoose.trusted(rate);
     }
 
     const gigs = await Gig.find(filter)

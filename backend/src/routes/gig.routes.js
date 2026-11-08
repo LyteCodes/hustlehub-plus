@@ -1,14 +1,17 @@
 const express = require("express");
 const router = express.Router();
 const gigController = require("../controllers/gig.controller");
-const { authenticate, authorizeRoles } = require("../middleware/auth.middleware");
+const {
+  authenticate,
+  authorizeRoles,
+} = require("../middleware/auth.middleware");
 const {
   gigValidation,
   gigSearchValidation,
   gigUpdateValidation,
-  validateGigIdRouteParam,
+  validateIdParam,
 } = require("../middleware/validation.middleware");
-const { CheckGigOwnership } = require("../middleware/ownership.middleware")
+const { CheckGigOwnership } = require("../middleware/ownership.middleware");
 
 /**
  * @file gig.routes.js
@@ -254,7 +257,13 @@ const { CheckGigOwnership } = require("../middleware/ownership.middleware")
  *                 gig:
  *                   $ref: '#/components/schemas/GigSummary'
  */
-router.post("/", authenticate, authorizeRoles("freelancer", "admin"), gigValidation, gigController.create);
+router.post(
+  "/",
+  authenticate,
+  authorizeRoles("freelancer", "admin"),
+  gigValidation,
+  gigController.create,
+);
 
 /**
  * @swagger
@@ -278,7 +287,12 @@ router.post("/", authenticate, authorizeRoles("freelancer", "admin"), gigValidat
  *                   items:
  *                     $ref: '#/components/schemas/Gig'
  */
-router.get("/mine", authenticate, authorizeRoles("freelancer"), gigController.mine);
+router.get(
+  "/mine",
+  authenticate,
+  authorizeRoles("freelancer"),
+  gigController.mine,
+);
 
 /**
  * @swagger
@@ -302,7 +316,14 @@ router.get("/mine", authenticate, authorizeRoles("freelancer"), gigController.mi
  *             schema:
  *               $ref: '#/components/schemas/Gig'
  */
-router.get("/:id", authenticate, authorizeRoles("freelancer", "admin"), CheckGigOwnership, gigController.getGigByID);
+router.get(
+  "/:id",
+  authenticate,
+  validateIdParam,
+  authorizeRoles("freelancer", "admin"),
+  CheckGigOwnership,
+  gigController.getGigByID,
+);
 
 /**
  * @swagger
@@ -391,7 +412,15 @@ router.get("/", gigSearchValidation, gigController.getGigs);
  *             schema:
  *               $ref: '#/components/schemas/Gig'
  */
-router.put("/:id", authenticate, authorizeRoles("freelancer", "admin"), CheckGigOwnership, gigUpdateValidation, gigController.updateGigByID);
+router.put(
+  "/:id",
+  authenticate,
+  validateIdParam,
+  authorizeRoles("freelancer", "admin"),
+  CheckGigOwnership,
+  gigUpdateValidation,
+  gigController.updateGigByID,
+);
 
 /**
  * @swagger
@@ -418,6 +447,13 @@ router.put("/:id", authenticate, authorizeRoles("freelancer", "admin"), CheckGig
  *                   type: string
  *                   example: Gig successfully deleted.
  */
-router.delete("/:id", authenticate, validateGigIdRouteParam, authorizeRoles("freelancer", "admin"), CheckGigOwnership,  gigController.deleteGigByID);
+router.delete(
+  "/:id",
+  authenticate,
+  validateIdParam,
+  authorizeRoles("freelancer", "admin"),
+  CheckGigOwnership,
+  gigController.deleteGigByID,
+);
 
 module.exports = router;
