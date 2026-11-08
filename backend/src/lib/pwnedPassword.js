@@ -17,7 +17,7 @@ const PWNED_RANGE_URL = 'https://api.pwnedpasswords.com/range/';
  * @returns {Promise<number>}
  */
 async function checkPwnedPassword(password) {
-  const sha1   = crypto.createHash('sha1').update(password).digest('hex').toUpperCase();
+  const sha1   = crypto.createHash('sha1').update(password).digest('hex').toUpperCase(); 
   const prefix = sha1.slice(0, 5);
   const suffix = sha1.slice(5);
 
@@ -31,7 +31,7 @@ async function checkPwnedPassword(password) {
   for (const line of body.split('\r\n')) {
     const sep = line.indexOf(':');
     if (sep === -1) continue;
-    if (line.slice(0, sep) === suffix) return parseInt(line.slice(sep + 1), 10);
+    if (line.slice(0, sep) === suffix) return Number.parseInt(line.slice(sep + 1), 10);
   }
   return 0;
 }
