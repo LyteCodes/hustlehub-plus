@@ -58,7 +58,7 @@ exports.create = async (req, res, next) => {
         const openBooking = await Booking.findOne({
             gig: gigExists._id,
             client: req.user.id,
-            status: { $in: ["Pending", "Confirmed"] },
+            $or: [{ status: "Pending" }, { status: "Confirmed" }],
         }).exec();
 
         if (openBooking) {
