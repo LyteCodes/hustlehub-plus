@@ -47,5 +47,5 @@ function validateTitleLength(strLen){
     return strLen.length <= 120;
 }
 
-const Gig = mongoose.model('Gig', gigSchema);
+const Gig = mongoose.models.Gig || mongoose.model('Gig', gigSchema);
 module.exports = Gig;
