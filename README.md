@@ -565,6 +565,56 @@ const registerValidation = [
 ];
 ```
 
+### Breached Password Check (HIBP)
+
+To comply with NIST SP 800-63B §5.1.1, registration additionally enforces a minimum password length of 8 characters and verifies that the submitted password has not appeared in a known data breach. This is achieved using the HaveIBeenPwned (HIBP) Pwned Passwords range API [[27]](https://haveibeenpwned.com/API/v3#SearchingPwnedPasswordsByRange).
+
+The check employs a k-anonymity model to protect user privacy during the lookup. Only the first 5 hexadecimal characters of the SHA-1 hash of the submitted password are transmitted to the HIBP API. The API returns all hash suffixes that share this prefix, each paired with a breach count. The remaining 35 characters of the locally computed hash are then compared against the returned suffixes in-process. Neither the plaintext password nor a recoverable portion of its hash is ever exposed to the external service.
+
+```mermaid
+flowchart TD
+    subgraph local["In-process — never transmitted"]
+        A["password: hunter2"] -->|SHA-1| B["F3BBB D66A63D4BF1747940578EC3D0103530E21D"]
+        B -->|"chars 5–39"| SFX["suffix\nD66A63D4BF1747940578EC3D0103530E21D"]
+    end
+
+    B -->|"chars 0–4"| PFX["prefix: F3BBB"]
+    PFX -->|"GET /range/F3BBB"| HIBP["HIBP API\nreturns ~800 suffix:count pairs"]
+    HIBP --> CMP{"suffix\nin list?"}
+    SFX --> CMP
+    CMP -->|"yes — count > 0"| BLK["400 BREACHED_PASSWORD"]
+    CMP -->|no| OK["registration proceeds"]
+```
+
+If the suffix is present in the API response with a breach count greater than zero, the registration request is rejected with `400 BREACHED_PASSWORD`. The check is designed to fail open: if the HIBP API is unreachable during a third-party outage, a warning is emitted to the structured logger and registration proceeds, preserving system availability.
+
+```javascript
+// NIST SP 800-63B §5.1.1 minimum length
+if (!password || password.length < MIN_PASSWORD_LENGTH)
+  return res.status(400).json({
+    error: { code: "WEAK_PASSWORD", message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` },
+  });
+
+// HIBP k-anonymity breached-password check
+try {
+  const breachCount = await checkPwnedPassword(password);
+  if (breachCount > 0) {
+    return res.status(400).json({
+      error: {
+        code: "BREACHED_PASSWORD",
+        message: "This password has appeared in a known data breach. Please choose a different password.",
+      },
+    });
+  }
+} catch (hibpErr) {
+  logger.warn("HIBP check failed – proceeding with registration", {
+    event: "auth.register.hibp_error",
+    error: hibpErr.message,
+    ip: req.ip,
+  });
+}
+```
+
 ### Login Validation 
 
 The middleware exposes the array `loginValidation` that filters login payloads by blocking unknown properties, enforcing strict email formatting requirements, and validating password presence and type constraints up to a 128-character maximum. This ensures that user login requests that have malformed properties do not reach controllers, isolating the core system logic from malicious data structures.
@@ -614,53 +664,51 @@ const rejectUnknownFields = (allowedFields) => {
 
 ### JWT Validation 
 
-The middleware exposes the function `authenticate` that extracts JSON Web Tokens from the incoming `Authorization` header, cryptographically verifies their signatures against `JWT_SECRET`, checks expiration, and handles session identification by appending the validated user payload (`id` and `role`) directly onto the request object as `req.user`.
+The middleware exposes the function `authenticate` that extracts JSON Web Tokens from the incoming `Authorization` header, cryptographically verifies their signatures against `JWT_SECRET`, checks expiration, validates the decoded claims, and attaches the verified identity to `req.user`. After `jwt.verify()` confirms the signature, the middleware additionally validates that `decoded.sub` is a well-formed MongoDB ObjectId string and that `decoded.role` is one of the system's permitted role values. This prevents crafted tokens that carry object-type claims (e.g. `{ "$gt": "" }`) from flowing into Mongoose queries as NoSQL injection vectors, even if a token with a valid signature were somehow obtained.
 
 ```javascript 
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
+
+const ALLOWED_ROLES = ['freelancer', 'client', 'admin'];
 
 const authenticate = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
-  // Check header exists and uses "Bearer <token>" schema
   if (!authHeader || !authHeader.startsWith("Bearer "))
     return res.status(401).json({
-      error: {
-        code: "UNAUTHORIZED",
-        message: "Authentication token missing or malformed.",
-      },
+      error: { code: "UNAUTHORIZED", message: "Authentication token missing or malformed." },
     });
 
   const token = authHeader.split(" ")[1];
 
   try {
-    // Verify sig & check exp using JWT_SECRET
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, config.jwt.secret);
 
-    // Attach standard identity payload to request object
+    // Reject tokens whose claims are not plain strings of the expected shape.
+    if (
+      typeof decoded.sub !== 'string' ||
+      !mongoose.Types.ObjectId.isValid(decoded.sub) ||
+      !ALLOWED_ROLES.includes(decoded.role)
+    ) {
+      return res.status(401).json({
+        error: { code: 'INVALID_TOKEN', message: 'Invalid authentication token.' },
+      });
+    }
+
     req.user = { id: decoded.sub, role: decoded.role };
-
     next();
   } catch (err) {
-    // Distinguish exp from other errors without leaking internals
     if (err.name == "TokenExpiredError")
       return res.status(401).json({
-        error: {
-          code: "TOKEN_EXPIRED",
-          message: "Token has expired. Please log in again.",
-        },
+        error: { code: "TOKEN_EXPIRED", message: "Token has expired. Please log in again." },
       });
 
     return res.status(401).json({
-      error: {
-        code: "INVALID_TOKEN",
-        message: "Invalid authentication token.",
-      },
+      error: { code: "INVALID_TOKEN", message: "Invalid authentication token." },
     });
   }
 };
-
-module.exports = authenticate;
 ```
 ## Security Headers
 
@@ -1203,7 +1251,53 @@ Swagger has been incorporated into the API project, contextualizing the requests
 ![Postman sends GET /api/auth/me with an invalid Bearer token; the server responds 401 Unauthorized with an INVALID_TOKEN error.](<backend/tests/postman/Screenshots/Me - Invalid Token.png>) ![Postman sends GET /api/auth/me without an authorization token; the server responds 401 Unauthorized with an UNAUTHORIZED error and the message "Authentication token missing or malformed."](<backend/tests/postman/Screenshots/Me - No Token.png>) ![Postman sends GET /api/auth/me with a valid JWT Bearer token; the server responds 200 OK with the authenticated user's profile.](<backend/tests/postman/Screenshots/Me - Valid Token.png>) ![Postman sends POST /api/auth/register with an already-registered email address; the server responds 400 Bad Request with a structured VALIDATION_ERROR object.](<backend/tests/postman/Screenshots/Register - Duplicate Email.png>) ![Postman sends POST /api/auth/register with the malformed email "not-an-email"; the server responds 400 Bad Request with a VALIDATION_ERROR and the message "Email must be a valid email address."](<backend/tests/postman/Screenshots/Register - Invalid Email.png>) ![Postman sends POST /api/auth/register without an email field; the server responds 400 Bad Request with a VALIDATION_ERROR and the message "Email is required."](<backend/tests/postman/Screenshots/Register - Missing Email.png>) ![Postman sends POST /api/auth/register with a valid email, password, and role; the server responds 201 Created with a success message and the new user object.](<backend/tests/postman/Screenshots/Register - Successful Registration.png>) ![Postman sends POST /api/auth/register with an unsupported "username" field; the server responds 400 Bad Request with an UNKNOWN_FIELDS error indicating the field is not allowed.](<backend/tests/postman/Screenshots/Register - Unknown Field.png>) ![Postman sends POST /api/auth/register with the weak password "123"; the server responds 400 Bad Request with a VALIDATION_ERROR and the message "Password must be complex and between 8 to 128 characters."](<backend/tests/postman/Screenshots/Register - Weak Password.png>)
 
 
+# Logging and Observability
+
+The system incorporates structured JSON logging using Winston, supplemented by an optional OTLP transport that forwards log records to Grafana Cloud Loki for centralised storage and querying.
+
+## Structured JSON Logging
+
+All application logs are emitted as structured JSON objects. Each record carries a timestamp, severity level, human-readable message, and a contextual metadata payload. Structured logging enables downstream aggregation platforms to index and query fields such as `event`, `userId`, and `ip` directly, without relying on text pattern matching.
+
+```json
+{
+  "level": "warn",
+  "message": "Login failed – wrong password",
+  "event": "auth.login.failed",
+  "reason": "invalid_password",
+  "userId": "68210fc2a1b2c3d4e5f67890",
+  "ip": "127.0.0.1",
+  "timestamp": "2026-11-08T13:29:01.000+02:00"
+}
+```
+
+Audit events are emitted at security-relevant points throughout the application lifecycle using a dot-separated `event` namespace convention (e.g. `auth.login.failed`, `security.access_denied`, `auth.register.breached_password`). This enables event-specific alerting rules to be configured in Grafana without requiring full-text log search.
+
+## Grafana Cloud OTLP Transport
+
+When the environment variables `GRAFANA_OTLP_ENDPOINT`, `GRAFANA_OTLP_INSTANCE_ID`, and `GRAFANA_OTLP_API_KEY` are present, a custom Winston transport (`OtlpTransport`) is registered that batches and ships log records to Grafana Cloud Loki over the OpenTelemetry Protocol (OTLP/HTTP) [[28]](https://opentelemetry.io/docs/specs/otlp/#otlphttp-logs).
+
+Records are queued in memory and flushed when the batch size limit is reached (default 50 records) or when a periodic timer fires (default every 5 seconds). The transport maps Winston severity levels to OTLP severity numbers and serialises each record into the OTLP `resourceLogs` envelope format, attaching resource-level attributes including `service.name`, `service.version`, `deployment.environment`, and `host.name`. The timer is `unref()`-ed so it does not prevent the Node.js process from exiting cleanly. If the OTLP endpoint returns a non-2xx status or is unreachable, the error is emitted as a transport-level warning so application execution is not interrupted by logging failures.
+
+```javascript
+// backend/.env — required to enable the OTLP transport
+GRAFANA_OTLP_ENDPOINT=https://<loki-push-endpoint>/otlp
+GRAFANA_OTLP_INSTANCE_ID=<instance-id>
+GRAFANA_OTLP_API_KEY=<api-key>
+```
+
 # Tests
+## Jest Test Suite
+
+The backend ships an automated test suite (83 tests, 7 suites) built with Jest 30 and Supertest. Tests are split into unit tests (tax engine, validators) and integration tests (auth, RBAC, ownership, booking → transaction flow, security headers). Integration tests use a shared `MongoMemoryServer` instance spun up via Jest `globalSetup`/`globalTeardown`, avoiding port conflicts and test-file-level startup overhead. Run the suite from the `backend/` directory:
+
+```bash
+npm run test:jest        # run all 83 tests
+npm run test:coverage    # run with lcov + text coverage report
+```
+
+## npm Audit
+
 At `c28fbaa`: ran npm audit, showed 42 vulnerabilities: <img width="1920" height="967" alt="npm_audit_Screenshot From 2026-11-08 18-37-26" src="https://github.com/user-attachments/assets/7f9240ec-2057-4dd7-b214-b51d076e638d" />  
 At `3066caa`: after running npm audit fix, showed 40 vulnerabilities <img width="1920" height="967" alt="npm_audit_fix_Screenshot From 2026-11-08 18-38-31" src="https://github.com/user-attachments/assets/c201fb38-8557-4204-b7a1-6cb69d56349c" />
 
