@@ -1,4 +1,5 @@
 import axios from "axios";
+import { mockAdapter } from "./mock/adapter";
 
 const TOKEN_KEY = "hh_token";
 
@@ -31,6 +32,12 @@ api.interceptors.request.use((config) => {
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
 });
+
+// register mock adapter when running in test mode only
+// VITE_USE_MOCK is "true" only in .env.test.local, never in .env
+if (import.meta.env.VITE_USE_MOCK === "true") {
+    api.defaults.adapter = mockAdapter;
+}
 
 api.interceptors.response.use(
     (res) => res,
