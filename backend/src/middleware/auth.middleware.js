@@ -1,75 +1,78 @@
 /**
+ * @file auth.middleware.js
+ * @description Authentication and authorization middleware: verifies Bearer JWTs
+ * and restricts routes to allowed roles.
+ * Code based on the following source:
+ *
  * https://www.npmjs.com/package/jsonwebtoken
  * https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Authorization
  * https://expressjs.com/en/guide/writing-middleware/
+ * https://www.rfc-editor.org/rfc/rfc8725 (JWT best practices: pin the algorithm)
  */
 
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const config = require("../config");
 const logger = require("../lib/logger");
-const ALLOWED_ROLES = ['freelancer', 'client', 'admin'];
+
+const ALLOWED_ROLES = ["freelancer", "client", "admin"];
+
+/**
+ * Send the generic 401. Every authentication failure gets the same body, so a
+ * caller can't tell a missing token from a forged or expired one.
+ * @param {Object} res - The response object.
+ * @returns {Object} The response.
+ */
+const unauthorized = (res) =>
+  res.status(401).json({
+    error: { code: "UNAUTHORIZED", message: "Authentication required." },
+  });
+
+/**
+ * Send the generic 403 for an authenticated user without the required role.
+ * @param {Object} res - The response object.
+ * @returns {Object} The response.
+ */
+const forbidden = (res) =>
+  res.status(403).json({
+    error: {
+      code: "FORBIDDEN",
+      message: "You do not have permission to do that.",
+    },
+  });
 
 /**
  * Verify the Bearer token in the Authorization header and attach the identity
  * to req.user. Responds 401 for missing, expired, or invalid tokens.
- * @param {Object} 
- * @param {Object} 
- * @param {Function}
+ * @param {Object} req - The request object.
+ * @param {Object} res - The response object.
+ * @param {Function} next - The next middleware function.
  * @returns {void}
  */
 const authenticate = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  // Check header exists and uses "Bearer <token>" schema
-  if (!authHeader || !authHeader.startsWith("Bearer "))
-    return res.status(401).json({
-      error: {
-        code: "UNAUTHORIZED",
-        message: "Authentication token missing or malformed.",
-      },
-    });
-
-  const token = authHeader.split(" ")[1];
+  const header = req.headers.authorization;
+  if (typeof header !== "string" || !header.startsWith("Bearer "))
+    return unauthorized(res);
 
   try {
-    // Verify sig & check exp using JWT_SECRET
-    const decoded = jwt.verify(token, config.jwt.secret);
+    // Pin the algorithm: tokens using "none" or any other algorithm are rejected
+    const decoded = jwt.verify(header.slice(7), config.jwt.secret, {
+      algorithms: [config.jwt.algorithm],
+    });
 
-    // Reject tokens whose claims are not plain strings of the expected shape.
-    // jwt.verify() only checks the signature — a crafted token with a valid
-    // signature could carry an object in sub/role, which would flow into
-    // MongoDB queries as an operator injection vector.
+    // Claims must be plain values of the expected shape, so an object in
+    // sub/role can never reach a MongoDB query as an operator
     if (
-      typeof decoded.sub !== 'string' ||
+      typeof decoded.sub !== "string" ||
       !mongoose.Types.ObjectId.isValid(decoded.sub) ||
       !ALLOWED_ROLES.includes(decoded.role)
-    ) {
-      return res.status(401).json({
-        error: { code: 'INVALID_TOKEN', message: 'Invalid authentication token.' },
-      });
-    }
+    )
+      return unauthorized(res);
 
-    // Attach standard identity payload to request object
     req.user = { id: decoded.sub, role: decoded.role };
-
-    next();
-  } catch (err) {
-    // Distinguish exp from other errors without leaking internals
-    if (err.name == "TokenExpiredError")
-      return res.status(401).json({
-        error: {
-          code: "TOKEN_EXPIRED",
-          message: "Token has expired. Please log in again.",
-        },
-      });
-
-    return res.status(401).json({
-      error: {
-        code: "INVALID_TOKEN",
-        message: "Invalid authentication token.",
-      },
-    });
+    return next();
+  } catch {
+    return unauthorized(res);
   }
 };
 
@@ -78,27 +81,23 @@ const authenticate = (req, res, next) => {
  * @param {...string} allowedRoles - The roles permitted to pass through.
  * @returns {Function} A middleware that responds 403 when the role is not allowed.
  */
-const authorizeRoles = (...allowedRoles) => {
-  return (req, res, next) => {
-    if(!req.user){
-      return res.status(401).json({ message: "Unauthorized access" });
-    }
-
+const authorizeRoles =
+  (...allowedRoles) =>
+  (req, res, next) => {
+    if (!req.user) return unauthorized(res);
     if (!allowedRoles.includes(req.user.role)) {
       logger.warn("Access denied", {
-        event:         "security.access_denied",
-        userId:        req.user.id,
-        userRole:      req.user.role,
+        event: "security.access_denied",
+        userId: req.user.id,
+        userRole: req.user.role,
         allowedRoles,
-        method:        req.method,
-        path:          req.path,
-        ip:            req.ip,
+        method: req.method,
+        path: req.path,
+        ip: req.ip,
       });
-      return res.status(403).json({ error: "Access denied" });
+      return forbidden(res);
     }
-    next();
+    return next();
   };
-};
 
-
-module.exports = { authenticate, authorizeRoles };
+module.exports = { authenticate, authorizeRoles, unauthorized, forbidden };

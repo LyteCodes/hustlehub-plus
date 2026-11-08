@@ -147,7 +147,7 @@ exports.login = async (req, res, next) => {
     const token = jwt.sign(
       { sub: user.id, role: user.role, email: user.email },
       config.jwt.secret,
-      { expiresIn: "1h" },
+      { algorithm: config.jwt.algorithm, expiresIn: config.jwt.expiresIn },
     );
 
     logger.info("Login succeeded", {
