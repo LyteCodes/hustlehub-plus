@@ -3217,8 +3217,8 @@
                                     "",
                                     "const json = pm.response.json();",
                                     "",
-                                    "pm.test(\"Returns access denied\", function () {",
-                                    "    pm.expect(json.error).to.equal(\"Access denied\");",
+                                    "pm.test(\"Returns aFORBIDDEN\", function () {",
+                                    "    pm.expect(json.error).to.equal(\"FORBIDDEN\");",
                                     "});"
                                 ]
                             }
