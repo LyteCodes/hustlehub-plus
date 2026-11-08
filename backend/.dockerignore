@@ -2,9 +2,10 @@ node_modules
 npm-debug.log*
 .env
 .env.*
-!.env.example
-.git
-.gitignore
 secrets
 coverage
-tests/postman/Screenshots
+tests
+.git
+.gitignore
+Dockerfile
+*.pem
