@@ -5,6 +5,7 @@
  * https://expressjs.com/en/guide/writing-middleware/
  */
 
+const mongoose = require('mongoose');
 const Transaction = require('../models/transaction');
 const { estimateTax } = require('../lib/estimateTax');
 const SAST_OFFSET_MS = 2 * 60 * 60 * 1000;
@@ -41,7 +42,7 @@ function getSARSTaxYearLabel(date) {
  * @returns {{ startUTC: number, endUTC: number, totalDays: number }}
  */
 function taxYearBoundaries(label) {
-  const startYear = parseInt(label.split('/')[0], 10);
+  const startYear = Number.parseInt(label.split('/')[0], 10);
   const endYear   = startYear + 1;
   const startUTC = Date.UTC(startYear, 2, 1) - SAST_OFFSET_MS;
   const isLeap     = endYear % 4 === 0 && (endYear % 100 !== 0 || endYear % 400 === 0);
@@ -77,7 +78,9 @@ function getYtdDays(label, nowMs = Date.now()) {
  */
 exports.incomeSummary = async (req, res, next) => {
   try {
-    const freelancerId = req.user.id;
+    // Cast to ObjectId so the query value is always a typed scalar, not an
+    // arbitrary string that a NoSQL-injection scanner might flag.
+    const freelancerId = new mongoose.Types.ObjectId(req.user.id);
 
     const transactions = await Transaction.find({
       freelancer: freelancerId,
