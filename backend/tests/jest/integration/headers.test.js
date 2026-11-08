@@ -40,7 +40,6 @@ afterAll(async () => {
 });
 
 // Cache-Control: no-store 
-
 describe('Cache-Control: no-store on /api/me/income-summary', () => {
   test('200 response includes Cache-Control: no-store header', async () => {
     const id    = new mongoose.Types.ObjectId();
@@ -49,15 +48,12 @@ describe('Cache-Control: no-store on /api/me/income-summary', () => {
     const res = await request(app)
       .get('/api/me/income-summary')
       .set('Authorization', `Bearer ${token}`);
-
-    // The endpoint returns 200 (empty array when no transactions exist)
     expect(res.status).toBe(200);
     expect(res.headers['cache-control']).toMatch(/no-store/);
   });
 });
 
 // Helmet security headers 
-
 describe('Helmet security headers on all responses', () => {
 
   test('x-content-type-options: nosniff is present on API routes', async () => {
