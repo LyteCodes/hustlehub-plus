@@ -30,6 +30,7 @@ const meRoutes = require("./routes/me.routes");
 const connectToDB = require("./config/db");
 const { errorHandler, errorHandler404 } = require("./middleware/error.middleware");
 const { globalRateLimiter } = require("./middleware/rate-limit.middleware");
+const { requestLogger } = require("./middleware/request-logger.middleware");
  
 const app = express();
 
@@ -179,6 +180,10 @@ connectToDB();
  
 // Standard middleware with limit configured to prevent DoS
 app.use(express.json({ limit: "10kb" }));
+
+// Structured request logging (attaches after JSON parsing so req.user is available
+// on subsequent middleware; fires on response "finish" so it never blocks replies)
+app.use(requestLogger);
  
 // Routes
 app.use("/api/auth", authRoutes);

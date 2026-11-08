@@ -12,7 +12,8 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const config = require("../config");
 const UserModel = require("../models/user.model");
-const User = require("../models/user")
+const User = require("../models/user");
+const logger = require("../lib/logger");
 
 const SALT_ROUNDS = 12;
 
@@ -79,23 +80,38 @@ exports.login = async (req, res, next) => {
 
     // Verify whether user exists
     const user = await User.findOne({email});
-    if (!user)
+    if (!user) {
+      logger.warn("Login failed – unknown email", {
+        event: "auth.login.failed",
+        reason: "user_not_found",
+        email,
+        ip: req.ip,
+      });
       return res.status(401).json({
         error: {
           code: "INVALID_CREDENTIALS",
           message: "Invalid email or password.",
         },
       });
+    }
 
     // Verify hash of given password matches stored passwordHash
     const pwMatch = await bcrypt.compare(password, user.password);
-    if (!pwMatch)
+    if (!pwMatch) {
+      logger.warn("Login failed – wrong password", {
+        event: "auth.login.failed",
+        reason: "invalid_password",
+        userId: user.id,
+        email,
+        ip: req.ip,
+      });
       return res.status(401).json({
         error: {
           code: "INVALID_CREDENTIALS",
           message: "Invalid email or password.",
         },
       });
+    }
 
     // Mint token
     const token = jwt.sign(
@@ -103,6 +119,14 @@ exports.login = async (req, res, next) => {
       config.jwt.secret,
       { expiresIn: "1h" },
     );
+
+    logger.info("Login succeeded", {
+      event: "auth.login.succeeded",
+      userId: user.id,
+      email,
+      role: user.role,
+      ip: req.ip,
+    });
 
     return res.status(200).json({
       message: "Login successful.",

@@ -11,6 +11,7 @@
 
 const jwt = require("jsonwebtoken");
 const config = require("../config");
+const logger = require("../lib/logger");
 
 /**
  * Verify the Bearer token in the Authorization header and attach the identity
@@ -73,6 +74,15 @@ const authorizeRoles = (...allowedRoles) => {
     }
 
     if (!allowedRoles.includes(req.user.role)) {
+      logger.warn("Access denied", {
+        event:         "security.access_denied",
+        userId:        req.user.id,
+        userRole:      req.user.role,
+        allowedRoles,
+        method:        req.method,
+        path:          req.path,
+        ip:            req.ip,
+      });
       return res.status(403).json({ error: "Access denied" });
     }
     next();
