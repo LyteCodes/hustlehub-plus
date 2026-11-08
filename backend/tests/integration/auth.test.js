@@ -247,12 +247,39 @@ describe("Auth Integration Tests", () => {
     });
 
     it("permits access when a valid bearer token is present (GET /me - Valid Token / Me Valid Token)", async () => {
-      assert.ok(authToken, "Test requires an active token from the login step");
-      const res = await request("/api/auth/me", {
-        headers: { Authorization: `Bearer ${authToken}` },
+      const meUser = {
+        email: `test_me_${Date.now()}@hustlehub.co.za`,
+        password: "SecurePassword123!",
+        role: "freelancer",
+      };
+
+      const registerRes = await request("/api/auth/register", {
+        method: "POST",
+        body: meUser,
       });
-      assert.strictEqual(res.status, 200);
-      assert.strictEqual(res.body?.user?.email, testUser.email);
+      assert.strictEqual(registerRes.status, 201, JSON.stringify(registerRes.body));
+
+      const loginRes = await request("/api/auth/login", {
+        method: "POST",
+        body: {
+          email: meUser.email,
+          password: meUser.password,
+        },
+      });
+      assert.strictEqual(loginRes.status, 200, JSON.stringify(loginRes.body));
+
+      const token = loginRes.body?.token;
+      assert.ok(
+        typeof token === "string" && token.length > 0,
+        "Login should return a non-empty token",
+      );
+
+      const res = await request("/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      assert.strictEqual(res.status, 200, JSON.stringify(res.body));
+      assert.strictEqual(res.body?.user?.email, meUser.email);
       assert.strictEqual(res.body?.user?.passwordHash, undefined);
     });
   });
