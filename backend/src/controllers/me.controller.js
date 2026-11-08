@@ -1,26 +1,19 @@
 'use strict';
 
 /**
- * @file me.controller.js
- * @description Controller for the authenticated freelancer's self-service endpoints.
- * GET /api/me/income-summary aggregates completed transactions by SARS tax year
- * (South Africa Standard Time, UTC+2) and attaches a SARS 2026/27 tax estimate
- * to each year.
- *
  * https://www.sars.gov.za/tax-rates/income-tax/rates-of-tax-for-individuals/
  * https://expressjs.com/en/guide/writing-middleware/
  */
 
+const mongoose = require('mongoose');
 const Transaction = require('../models/transaction');
 const { estimateTax } = require('../lib/estimateTax');
-
-// SAST = UTC+2 (no daylight-saving offset in South Africa)
 const SAST_OFFSET_MS = 2 * 60 * 60 * 1000;
 
 /**
  * Shift a UTC Date into SAST by adding the fixed UTC+2 offset.
- * @param {Date} date
- * @returns {Date} A new Date whose UTC fields read as SAST local values.
+ * @param {Date} 
+ * @returns {Date}
  */
 function toSAST(date) {
   return new Date(date.getTime() + SAST_OFFSET_MS);
@@ -28,15 +21,14 @@ function toSAST(date) {
 
 /**
  * Derive the SARS tax-year label for a given date.
- * The South African tax year runs 1 March – last day of February.
  *
  * @param {Date} date
- * @returns {string} e.g. "2026/27"
+ * @returns {string}
  */
 function getSARSTaxYearLabel(date) {
   const sast  = toSAST(date);
   const year  = sast.getUTCFullYear();
-  const month = sast.getUTCMonth() + 1; // 1-indexed
+  const month = sast.getUTCMonth() + 1;
   if (month >= 3) {
     return `${year}/${String(year + 1).slice(2)}`;
   }
@@ -46,30 +38,24 @@ function getSARSTaxYearLabel(date) {
 /**
  * Return the UTC-epoch boundaries and total-day count for a SARS tax-year label.
  *
- * @param {string} label  e.g. "2026/27"
+ * @param {string} label 
  * @returns {{ startUTC: number, endUTC: number, totalDays: number }}
  */
 function taxYearBoundaries(label) {
-  const startYear = parseInt(label.split('/')[0], 10);
+  const startYear = Number.parseInt(label.split('/')[0], 10);
   const endYear   = startYear + 1;
-
-  // March 1 of startYear at 00:00 SAST, expressed as UTC epoch ms
   const startUTC = Date.UTC(startYear, 2, 1) - SAST_OFFSET_MS;
-
-  // Check whether the tax-year end falls in a leap year
   const isLeap     = endYear % 4 === 0 && (endYear % 100 !== 0 || endYear % 400 === 0);
   const febLastDay = isLeap ? 29 : 28;
   const totalDays  = isLeap ? 366 : 365;
-
-  // Last ms of the final February day in endYear, expressed as UTC epoch ms
   const endUTC = Date.UTC(endYear, 1, febLastDay, 23, 59, 59, 999) - SAST_OFFSET_MS;
 
   return { startUTC, endUTC, totalDays };
 }
 
 /**
- * Calculate how many days have elapsed in the given tax year as of `nowMs`.
- * Returns `totalDays` once the year has ended. Returns 1 (minimum) on the
+ * Calculate how many days have elapsed in the given tax year as of nowMs.
+ * Returns totalDays once the year has ended. Returns 1 (minimum) on the
  * opening day to prevent division-by-zero in annualisation.
  *
  * @param {string} label
@@ -86,19 +72,15 @@ function getYtdDays(label, nowMs = Date.now()) {
 /**
  * GET /api/me/income-summary
  *
- * Returns the authenticated freelancer's completed transactions grouped by
- * SARS tax year (SAST). Each group includes gross income, platform-fee
- * deduction, net income, and a SARS 2026/27 tax estimate (annualised + pro-rated).
- * Sets Cache-Control: no-store to prevent sensitive financial data from being
- * stored in any cache.
- *
- * @param {import('express').Request}  req  - req.user.id populated by authenticate middleware
+ * @param {import('express').Request}  req 
  * @param {import('express').Response} res
  * @param {import('express').NextFunction} next
  */
 exports.incomeSummary = async (req, res, next) => {
   try {
-    const freelancerId = req.user.id;
+    // Cast to ObjectId so the query value is always a typed scalar, not an
+    // arbitrary string that a NoSQL-injection scanner might flag.
+    const freelancerId = new mongoose.Types.ObjectId(req.user.id);
 
     const transactions = await Transaction.find({
       freelancer: freelancerId,
@@ -107,7 +89,6 @@ exports.incomeSummary = async (req, res, next) => {
       .lean()
       .exec();
 
-    // Group completed transactions by SARS tax year (SAST)
     const groups = new Map();
     for (const tx of transactions) {
       const label = getSARSTaxYearLabel(tx.createdAt);
@@ -117,7 +98,6 @@ exports.incomeSummary = async (req, res, next) => {
 
     const summary = [];
     for (const [label, txs] of groups.entries()) {
-      // Convert rand amounts to integer cents (amounts stored as Number in rand)
       const grossCents = txs.reduce((sum, tx) => sum + Math.round(tx.amount * 100), 0);
 
       const { totalDays } = taxYearBoundaries(label);
@@ -153,7 +133,6 @@ exports.incomeSummary = async (req, res, next) => {
       });
     }
 
-    // Chronological order
     summary.sort((a, b) => a.taxYear.localeCompare(b.taxYear));
 
     res.set('Cache-Control', 'no-store');

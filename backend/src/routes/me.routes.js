@@ -1,10 +1,6 @@
 'use strict';
 
 /**
- * @file me.routes.js
- * @description Self-service routes for the authenticated user.
- * Currently exposes GET /income-summary (freelancer only).
- *
  * https://expressjs.com/en/4x/api/router/
  * https://swagger.io/specification/
  */

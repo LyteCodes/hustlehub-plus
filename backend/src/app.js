@@ -1,9 +1,4 @@
 /**
- * @file app.js
- * @description Express application setup: security middleware (Helmet, CORS), JSON parsing,
- * Swagger docs, auth routes, and centralized error handling.
- * Code based on the following source:
- *
  * https://www.npmjs.com/package/express
  * https://expressjs.com/en/4x/api/express/
  * https://helmetjs.github.io/
@@ -44,8 +39,6 @@ app.get("/health", (req, res) => {
 });
  
 app.disable("x-powered-by");
-
-// Global rate limiter middleware
 app.use(globalRateLimiter);
 
 // Swagger docs
@@ -121,7 +114,6 @@ if (process.env.NODE_ENV !== "production") {
         },
       },
     },
-    // Absolute path so it works regardless of where Node is started from
     apis: [path.join(__dirname, "routes", "*.js")],
   });
  
@@ -137,7 +129,6 @@ if (process.env.NODE_ENV !== "production") {
         scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:"],
-        // Prevents assets being forced to https on plain-http localhost
         "upgrade-insecure-requests": null,
       },
     }),
