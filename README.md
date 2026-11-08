@@ -565,7 +565,7 @@ const registerValidation = [
 ];
 ```
 
-### Breached Password Check (HIBP)
+### Breached Password Check (HIBP) (own feature)
 
 To comply with NIST SP 800-63B §5.1.1, registration additionally enforces a minimum password length of 8 characters and verifies that the submitted password has not appeared in a known data breach. This is achieved using the HaveIBeenPwned (HIBP) Pwned Passwords range API [[27]](https://haveibeenpwned.com/API/v3#SearchingPwnedPasswordsByRange).
 
@@ -578,8 +578,12 @@ flowchart TD
         B -->|"chars 5–39"| SFX["suffix\nD66A63D4BF1747940578EC3D0103530E21D"]
     end
 
+    subgraph hibp["Have I Been Pwned — Pwned Passwords k-anonymity API"]
+        HIBP["GET /range/:prefix\nreturns ~800 suffix:count pairs"]
+    end
+
     B -->|"chars 0–4"| PFX["prefix: F3BBB"]
-    PFX -->|"GET /range/F3BBB"| HIBP["HIBP API\nreturns ~800 suffix:count pairs"]
+    PFX -->|"prefix only"| HIBP
     HIBP --> CMP{"suffix\nin list?"}
     SFX --> CMP
     CMP -->|"yes — count > 0"| BLK["400 BREACHED_PASSWORD"]
