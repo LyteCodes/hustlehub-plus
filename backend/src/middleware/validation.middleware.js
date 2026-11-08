@@ -411,5 +411,4 @@ module.exports = {
   gigUpdateValidation,
   validateIdParam,
   aggregationQueryValidation,
-  bookingValidation,
 };
