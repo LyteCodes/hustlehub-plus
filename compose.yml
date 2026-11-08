@@ -1,21 +1,4 @@
 services:
-  mongo:
-    image: mongo:8
-    restart: unless-stopped
-    environment:
-      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-hustlehub}
-    volumes:
-      - mongo_data:/data/db
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "mongosh --quiet --eval \"db.adminCommand('ping').ok\" | grep 1"
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
   backend:
     build:
       context: ./backend
@@ -26,18 +9,17 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      USE_HTTPS: "false"
-      CLIENT_ORIGIN: https://localhost:8443
-    depends_on:
-      mongo:
-        condition: service_healthy
+      USE_HTTPS: "true"
+      CLIENT_ORIGIN: http://localhost:8080
+    volumes:
+      - ./backend/secrets:/app/secrets:ro
     healthcheck:
       test:
         [
           "CMD",
           "node",
           "-e",
-          "const http=require('http');const r=http.get('http://127.0.0.1:3000/health',res=>process.exit(res.statusCode===200?0:1));r.on('error',()=>process.exit(1));r.setTimeout(4000,()=>{r.destroy();process.exit(1)})"
+          "const https=require('https');const r=https.get('https://127.0.0.1:3000/health',{rejectUnauthorized:false},res=>process.exit(res.statusCode===200?0:1));r.on('error',()=>process.exit(1));r.setTimeout(4000,()=>{r.destroy();process.exit(1)})"
         ]
       interval: 10s
       timeout: 5s
@@ -70,6 +52,3 @@ services:
       timeout: 5s
       start_period: 10s
       retries: 5
-
-volumes:
-  mongo_data:
