@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { incomingBookings, income, setBookingStatus } from '../api/bookings'
+import { incomingBookings, income, incomeSummary, setBookingStatus } from '../api/bookings'
 import { parseApiError } from '../api/client'
 import { useAsync } from '../lib/useAsync'
 import CategoryArt from '../components/CategoryArt'
@@ -13,6 +13,10 @@ function statusClass(s) {
     return map[s] || s?.toLowerCase() || ''
 }
 
+function centsToRand(cents) {
+    return (cents || 0) / 100
+}
+
 export default function BookingsIncomePage() {
     const [tab, setTab] = useState('bookings')
 
@@ -24,9 +28,12 @@ export default function BookingsIncomePage() {
             <div className="tabs">
                 <button className={`tab ${tab === 'bookings' ? 'active' : ''}`} onClick={() => setTab('bookings')}>Bookings</button>
                 <button className={`tab ${tab === 'transactions' ? 'active' : ''}`} onClick={() => setTab('transactions')}>Income</button>
+                <button className={`tab ${tab === 'tax' ? 'active' : ''}`} onClick={() => setTab('tax')}>Tax estimate</button>
             </div>
 
-            {tab === 'bookings' ? <IncomingTab /> : <IncomeTab />}
+            {tab === 'bookings' && <IncomingTab />}
+            {tab === 'transactions' && <IncomeTab />}
+            {tab === 'tax' && <TaxTab />}
         </main>
     )
 }
@@ -242,5 +249,159 @@ function IncomeTab() {
                 </div>
             </div>
         </>
+    )
+}
+
+function TaxTab() {
+    const { data, error, loading, reload } = useAsync(() => incomeSummary(), [])
+
+    if (error) return <p className="error-msg">Failed to load tax estimate: {error.message} <button className="btn-ghost" onClick={reload}>Retry</button></p>
+    if (loading && !data) return <p className="loading-msg">Loading…</p>
+
+    const summary = data?.summary || []
+
+    if (summary.length === 0) {
+        return (
+            <div className="table-card" style={{ marginTop: 0 }}>
+                <p className="text-muted" style={{ padding: '24px 0' }}>No completed transactions yet. Tax estimates will appear once you have completed bookings.</p>
+            </div>
+        )
+    }
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div className="table-card" style={{ marginTop: 0 }}>
+                <p className="text-muted" style={{ fontSize: 13, marginBottom: 0 }}>
+                    Estimates based on SARS 2026/27 individual income tax tables. This is an indication only — consult a tax professional for official advice.
+                </p>
+            </div>
+            {summary.map(yr => (
+                <TaxYearCard key={yr.taxYear} yr={yr} />
+            ))}
+        </div>
+    )
+}
+
+function TaxYearCard({ yr }) {
+    const te = yr.taxEstimate
+    const prov = te.provisionalTax
+
+    const gross = centsToRand(yr.grossIncomeCents)
+    const fee = centsToRand(yr.platformFeeCents)
+    const net = centsToRand(yr.netIncomeCents)
+    const annualNet = centsToRand(yr.annualNetIncomeCents)
+    const taxBefore = centsToRand(te.taxBeforeRebateCents)
+    const rebate = centsToRand(te.rebateCents)
+    const annualPayable = centsToRand(te.annualTaxPayableCents)
+    const proratedTax = centsToRand(te.proratedTaxCents)
+    const first = centsToRand(prov.firstPaymentCents)
+    const second = centsToRand(prov.secondPaymentCents)
+
+    const taxPct = annualNet > 0 ? (annualPayable / annualNet) * 100 : 0
+    const feePct = gross > 0 ? (fee / gross) * 100 : 0
+    const keepPct = Math.max(0, 100 - taxPct - feePct)
+
+    return (
+        <div className="table-card" style={{ marginTop: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+                <div>
+                    <h3 className="table-heading" style={{ marginBottom: 2 }}>Tax year {yr.taxYear}</h3>
+                    <p className="text-muted" style={{ fontSize: 13 }}>
+                        {yr.taxYearPeriod.start} → {yr.taxYearPeriod.end} · {yr.transactionCount} completed transaction{yr.transactionCount !== 1 ? 's' : ''}
+                    </p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                    <p className="stat-label">Effective rate</p>
+                    <p className="stat-value" style={{ fontSize: 22 }}>{te.effectiveRatePct}</p>
+                    <p className="text-muted" style={{ fontSize: 12 }}>Marginal: {te.marginalRatePct}</p>
+                </div>
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', height: 14, borderRadius: 7, overflow: 'hidden', background: 'rgba(255,255,255,0.08)' }}>
+                    <div style={{ width: `${keepPct}%`, background: '#19E58A' }} />
+                    <div style={{ width: `${taxPct}%`, background: '#F87171' }} />
+                    <div style={{ width: `${feePct}%`, background: '#FFC400' }} />
+                </div>
+                <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 12, flexWrap: 'wrap' }}>
+                    <span style={{ color: '#19E58A' }}>■ You keep ({keepPct.toFixed(1)}%)</span>
+                    <span style={{ color: '#F87171' }}>■ Est. tax ({taxPct.toFixed(1)}%)</span>
+                    <span style={{ color: '#FFC400' }}>■ Platform fee ({feePct.toFixed(1)}%)</span>
+                </div>
+            </div>
+
+            <table className="data-table" style={{ marginBottom: 20 }}>
+                <thead>
+                    <tr><th>Income breakdown</th><th style={{ textAlign: 'right' }}>Amount</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Gross income (completed transactions)</td>
+                        <td className="text-gold" style={{ textAlign: 'right' }}>{formatRand(gross)}</td>
+                    </tr>
+                    <tr>
+                        <td>Platform fee ({(yr.platformFeeRateBps / 100).toFixed(0)}%)</td>
+                        <td style={{ textAlign: 'right', color: '#F87171' }}>−{formatRand(fee)}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Net income (YTD)</strong></td>
+                        <td style={{ textAlign: 'right' }}><strong>{formatRand(net)}</strong></td>
+                    </tr>
+                    {yr.annualNetIncomeCents !== yr.netIncomeCents && (
+                        <tr>
+                            <td style={{ color: '#A78BFA' }}>Projected annual net income</td>
+                            <td style={{ textAlign: 'right', color: '#A78BFA' }}>{formatRand(annualNet)}</td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
+
+            <table className="data-table" style={{ marginBottom: 20 }}>
+                <thead>
+                    <tr><th>Tax calculation (SARS 2026/27)</th><th style={{ textAlign: 'right' }}>Amount</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Tax before rebate</td>
+                        <td style={{ textAlign: 'right' }}>{formatRand(taxBefore)}</td>
+                    </tr>
+                    <tr>
+                        <td>Primary rebate</td>
+                        <td style={{ textAlign: 'right', color: '#19E58A' }}>−{formatRand(rebate)}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Estimated annual tax payable</strong></td>
+                        <td style={{ textAlign: 'right' }}><strong className="text-gold">{formatRand(annualPayable)}</strong></td>
+                    </tr>
+                    {te.proratedTaxCents !== te.annualTaxPayableCents && (
+                        <tr>
+                            <td style={{ color: '#A78BFA' }}>Pro-rated to {yr.taxYearPeriod.ytdDays} days elapsed</td>
+                            <td style={{ textAlign: 'right', color: '#A78BFA' }}>{formatRand(proratedTax)}</td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
+
+            <div style={{ background: 'rgba(255,196,0,0.07)', border: '1px solid rgba(255,196,0,0.2)', borderRadius: 8, padding: '16px 20px' }}>
+                <h4 style={{ margin: '0 0 12px', fontSize: 14, color: '#FFC400' }}>Provisional tax (IRP6)</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 12px' }}>
+                    As a freelancer you are a provisional taxpayer. You pay in two instalments per year.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                    <div>
+                        <p className="stat-label">1st payment (due {prov.dates.firstDeadline})</p>
+                        <p className="stat-value" style={{ fontSize: 20 }}>{formatRand(first)}</p>
+                    </div>
+                    <div>
+                        <p className="stat-label">2nd payment (due {prov.dates.secondDeadline})</p>
+                        <p className="stat-value" style={{ fontSize: 20 }}>{formatRand(second)}</p>
+                    </div>
+                    <div>
+                        <p className="stat-label">Voluntary top-up deadline</p>
+                        <p style={{ fontSize: 14, marginTop: 4 }}>{prov.dates.topUpDeadline}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     )
 }

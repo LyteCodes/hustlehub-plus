@@ -220,6 +220,83 @@ route("get", "/transactions/mine", ({ user, query }) => {
     const out = paginate(transactions.filter((t) => t.client === user.id), { ...query, limit: query.limit || 5 });
     return { data: { data: out.data.map(transactionOut), meta: out.meta } };
 });
+
+route("get", "/me/income-summary", ({ user }) => {
+    need(user, "freelancer");
+    const mine = transactions.filter((t) => t.freelancer === user.id && t.status === "Completed");
+
+    const SAST_OFFSET_MS = 2 * 60 * 60 * 1000;
+    function taxYearLabel(isoString) {
+        const d = new Date(new Date(isoString).getTime() + SAST_OFFSET_MS);
+        const y = d.getUTCFullYear();
+        const m = d.getUTCMonth() + 1;
+        return m >= 3 ? `${y}/${String(y + 1).slice(2)}` : `${y - 1}/${String(y).slice(2)}`;
+    }
+
+    const groups = new Map();
+    for (const t of mine) {
+        const label = taxYearLabel(t.createdAt);
+        if (!groups.has(label)) groups.set(label, []);
+        groups.get(label).push(t);
+    }
+
+    const brackets = [
+        { thresholdCents: 0, baseTaxCents: 0, rateBps: 1800 },
+        { thresholdCents: 23795000, baseTaxCents: 4283100, rateBps: 2600 },
+        { thresholdCents: 37059000, baseTaxCents: 7731400, rateBps: 3100 },
+        { thresholdCents: 51250000, baseTaxCents: 12128400, rateBps: 3600 },
+        { thresholdCents: 66720000, baseTaxCents: 17695200, rateBps: 3900 },
+        { thresholdCents: 86960000, baseTaxCents: 25588000, rateBps: 4100 },
+        { thresholdCents: 180001000, baseTaxCents: 63767700, rateBps: 4500 },
+    ];
+    const PRIMARY_REBATE_CENTS = 1782000;
+    const PLATFORM_FEE_BPS = 1000;
+
+    function calcTax(grossCents) {
+        const feeCents = Math.round(grossCents * PLATFORM_FEE_BPS / 10000);
+        const netCents = grossCents - feeCents;
+        let bracket = brackets[0];
+        for (const b of brackets) { if (netCents >= b.thresholdCents) bracket = b; }
+        const taxBefore = bracket.baseTaxCents + Math.round((netCents - bracket.thresholdCents) * bracket.rateBps / 10000);
+        const payable = Math.max(0, taxBefore - PRIMARY_REBATE_CENTS);
+        const eff = netCents > 0 ? (payable / netCents * 100).toFixed(2) + "%" : "0.00%";
+        const marg = (bracket.rateBps / 100).toFixed(2) + "%";
+        return { feeCents, netCents, taxBefore, payable, eff, marg };
+    }
+
+    const summary = [];
+    for (const [label, txs] of groups.entries()) {
+        const grossCents = txs.reduce((s, t) => s + Math.round(t.amount * 100), 0);
+        const { feeCents, netCents, taxBefore, payable, eff, marg } = calcTax(grossCents);
+        summary.push({
+            taxYear: label,
+            taxYearPeriod: { start: `${label.slice(0, 4)}-03-01`, end: `20${label.slice(5)}-02-28`, totalDays: 365, ytdDays: 365 },
+            transactionCount: txs.length,
+            grossIncomeCents: grossCents,
+            platformFeeRateBps: PLATFORM_FEE_BPS,
+            platformFeeCents: feeCents,
+            netIncomeCents: netCents,
+            annualNetIncomeCents: netCents,
+            taxEstimate: {
+                taxBeforeRebateCents: taxBefore,
+                rebateCents: PRIMARY_REBATE_CENTS,
+                annualTaxPayableCents: payable,
+                proratedTaxCents: payable,
+                effectiveRatePct: eff,
+                marginalRatePct: marg,
+                provisionalTax: {
+                    firstPaymentCents: Math.round(payable / 2),
+                    secondPaymentCents: payable - Math.round(payable / 2),
+                    dates: { firstDeadline: "2026-08-31", secondDeadline: "2027-02-28", topUpDeadline: "2027-09-30" }
+                }
+            }
+        });
+    }
+
+    summary.sort((a, b) => a.taxYear.localeCompare(b.taxYear));
+    return { data: { freelancerId: user.id, generatedAt: new Date().toISOString(), summary } };
+});
+
 route("get", "/income", ({ user }) => {
     need(user, "freelancer");
     const mine = transactions.filter((t) => t.freelancer === user.id);
