@@ -26,6 +26,7 @@ const gigRoutes = require("./routes/gig.routes");
 const adminRoutes = require("./routes/admin.routes");
 const bookingRoutes = require("./routes/booking.routes");
 const transactionRoutes = require("./routes/transaction.routes");
+const meRoutes = require("./routes/me.routes");
 const connectToDB = require("./config/db");
 const { errorHandler, errorHandler404 } = require("./middleware/error.middleware");
 const { globalRateLimiter } = require("./middleware/rate-limit.middleware");
@@ -185,6 +186,7 @@ app.use("/api/gigs", gigRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/me", meRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
