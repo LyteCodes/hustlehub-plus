@@ -9,8 +9,10 @@ const config = require("../config");
 const UserModel = require("../models/user.model");
 const User = require("../models/user");
 const logger = require("../lib/logger");
+const { checkPwnedPassword } = require("../lib/pwnedPassword");
 
 const SALT_ROUNDS = 12;
+const MIN_PASSWORD_LENGTH = 8;
 
 /**
  * Register a new user. Rejects duplicate emails and returns the created user.
@@ -40,6 +42,39 @@ exports.register = async (req, res, next) => {
           message: "User registration has invalid role.",
         },
       });
+
+    // NIST SP 800-63B minimum length
+    if (!password || password.length < MIN_PASSWORD_LENGTH)
+      return res.status(400).json({
+        error: {
+          code: "WEAK_PASSWORD",
+          message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+        },
+      });
+
+    // HIBP k-anonymity breached-password check
+    try {
+      const breachCount = await checkPwnedPassword(password);
+      if (breachCount > 0) {
+        logger.warn("Registration blocked – breached password", {
+          event: "auth.register.breached_password",
+          ip: req.ip,
+        });
+        return res.status(400).json({
+          error: {
+            code: "BREACHED_PASSWORD",
+            message:
+              "This password has appeared in a known data breach. Please choose a different password.",
+          },
+        });
+      }
+    } catch (hibpErr) {
+      logger.warn("HIBP check failed – proceeding with registration", {
+        event: "auth.register.hibp_error",
+        error: hibpErr.message,
+        ip: req.ip,
+      });
+    }
 
     const newUser = await User.create({
       name,

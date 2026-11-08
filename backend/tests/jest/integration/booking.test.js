@@ -70,7 +70,7 @@ async function createPausedGig(freelancerId) {
   });
 }
 
-// ── POST /api/bookings ────────────────────────────────────────────────────────
+// POST /api/bookings
 
 describe('POST /api/bookings', () => {
   test('201: creates booking and a Pending transaction for an active gig', async () => {
@@ -89,7 +89,6 @@ describe('POST /api/bookings', () => {
     expect(res.body.booking.status).toBe('Confirmed');
     expect(res.body.booking.gig).toBe(gig._id.toString());
 
-    // A Pending transaction must exist for this booking
     const bookingId = res.body.booking._id;
     const tx = await Transaction.findOne({ booking: bookingId });
     expect(tx).not.toBeNull();
@@ -156,7 +155,7 @@ describe('POST /api/bookings', () => {
   });
 });
 
-// ── GET /api/bookings/mine ────────────────────────────────────────────────────
+// GET /api/bookings/mine
 
 describe('GET /api/bookings/mine', () => {
   test('200 and returns bookings for authenticated freelancer', async () => {

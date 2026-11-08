@@ -18,8 +18,6 @@ const jwt      = require('jsonwebtoken');
 let app;
 
 beforeAll(async () => {
-  // Jest 30 blocks dynamic import('os') inside its vm sandbox; pass the CJS
-  // os module directly so the mongodb driver can build its client metadata.
   const os = require('os');
   await mongoose.connect(process.env.MONGO_MEM_URI, { runtimeAdapters: { os } });
   app = require('../../../src/app');
@@ -81,7 +79,7 @@ describe('POST /api/auth/register', () => {
   });
 });
 
-// ── POST /api/auth/login ──────────────────────────────────────────────────────
+// POST /api/auth/login 
 
 describe('POST /api/auth/login', () => {
   const creds = { email: 'login@example.com', password: 'Valid#Pass1' };
@@ -123,13 +121,10 @@ describe('POST /api/auth/login', () => {
   });
 });
 
-// ── GET /api/auth/me ──────────────────────────────────────────────────────────
+// GET /api/auth/me 
 
 describe('GET /api/auth/me', () => {
   test('token passes auth middleware (not 401) with a valid JWT', async () => {
-    // The me controller uses an in-memory model (user.model.js), not MongoDB,
-    // so registered users are not visible there — expect 404, not 200.
-    // What we're testing here is that the auth middleware ACCEPTS a valid token.
     const id    = new mongoose.Types.ObjectId();
     const token = jwt.sign(
       { sub: id.toString(), role: 'client' },
@@ -140,8 +135,6 @@ describe('GET /api/auth/me', () => {
     const res = await request(app)
       .get('/api/auth/me')
       .set('Authorization', `Bearer ${token}`);
-
-    // Not 401 → auth middleware accepted the token
     expect(res.status).not.toBe(401);
   });
 
