@@ -102,8 +102,8 @@ const {
  */
 router.post(
   "/register",
-  registerValidation,
   authRateLimiter,
+  registerValidation,
   authController.register,
 );
 
@@ -161,7 +161,7 @@ router.post(
  *                       type: string
  *                       example: user
  */
-router.post("/login", loginValidation, authRateLimiter, authController.login);
+router.post("/login", authRateLimiter, loginValidation, authController.login);
 
 // Protected routes (require valid JWT)
 /**

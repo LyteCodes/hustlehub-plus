@@ -24,6 +24,13 @@ const defaultProtocol = useHttps ? "https" : "http";
 const defaultClientPort = process.env.CLIENT_PORT || 5173;
 const fallbackOrigin = `${defaultProtocol}://localhost:${defaultClientPort}`;
 
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret || Buffer.byteLength(jwtSecret, "utf8") < 32) {
+  throw new Error(
+    "JWT_SECRET is required but unset, must be minimum of 32 bytes long (generate with: openssl rand -hex 32)",
+  );
+}
+
 const config = Object.freeze({
   env,
   isProduction: env === "production",
@@ -32,9 +39,8 @@ const config = Object.freeze({
   port: parseInt(process.env.PORT, 10) || 3000,
   clientOrigin: process.env.CLIENT_ORIGIN || fallbackOrigin,
   jwt: {
-    secret:
-      process.env.JWT_SECRET ||
-      "temporary_development_secret_to_be_replaced_with_secure_random_hex",
+    secret: jwtSecret,
+    algorithm: "HS256",
     expiresIn: process.env.JWT_EXPIRES_IN || "1h",
   },
   ssl: {

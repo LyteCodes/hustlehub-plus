@@ -1,6 +1,10 @@
 const { rateLimit } = require("express-rate-limit");
 const logger = require("../lib/logger");
 
+const fromEnv = (name, fallback) =>
+  Number.parseInt(process.env[name], 10) || fallback;
+const WINDOW_MS = fromEnv("RATE_LIMIT_WINDOW_MS", 15 * 60 * 1000);
+
 function rateLimitHandler(limiterName) {
   return (req, res, next, options) => {
     logger.warn("Rate limit exceeded", {
@@ -16,8 +20,8 @@ function rateLimitHandler(limiterName) {
 }
 
 const bookingRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 10,
+  windowMs: WINDOW_MS,
+  limit: fromEnv("BOOKING_RATE_LIMIT", 10),
   standardHeaders: "draft-8",
   legacyHeaders: false,
   handler: rateLimitHandler("booking"),
@@ -30,8 +34,8 @@ const bookingRateLimiter = rateLimit({
 });
 
 const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 10,
+  windowMs: WINDOW_MS,
+  limit: fromEnv("AUTH_RATE_LIMIT", 10),
   standardHeaders: "draft-8",
   legacyHeaders: false,
   handler: rateLimitHandler("auth"),
@@ -44,8 +48,8 @@ const authRateLimiter = rateLimit({
 });
 
 const globalRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 300,
+  windowMs: WINDOW_MS,
+  limit: fromEnv("GLOBAL_RATE_LIMIT", 300),
   standardHeaders: "draft-8",
   legacyHeaders: false,
   handler: rateLimitHandler("global"),
