@@ -1,6 +1,6 @@
 'use strict';
 
-process.env.JWT_SECRET = 'jest-ownership-test-secret';
+process.env.JWT_SECRET = 'jest-ownership-test-secret-0123456789abcdef';
 process.env.NODE_ENV   = 'test';
 
 jest.mock('../../../src/config/db', () => jest.fn());
@@ -15,7 +15,7 @@ const request  = require('supertest');
 const mongoose = require('mongoose');
 const jwt      = require('jsonwebtoken');
 
-const SECRET = 'jest-ownership-test-secret';
+const SECRET = 'jest-ownership-test-secret-0123456789abcdef';
 
 function makeToken(id, role) {
   return jwt.sign({ sub: id.toString(), role }, SECRET, { expiresIn: '1h' });

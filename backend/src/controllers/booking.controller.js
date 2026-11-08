@@ -54,6 +54,21 @@ exports.create = async (req, res, next) => {
                 },
             });
         }
+
+        const openBooking = await Booking.findOne({
+            gig: gigExists._id,
+            client: req.user.id,
+            status: { $in: ["Pending", "Confirmed"] },
+        }).exec();
+
+        if (openBooking) {
+            return res.status(409).json({
+                error: {
+                    code: "DUPLICATE_BOOKING",
+                    message: "You already have an open booking for this gig.",
+                },
+            });
+        }
         /**
          * Create a new booking with the provided gig ID, client ID (from the authenticated user), freelancer ID (from the gig), and optional notes.
          * The booking status is set to "Confirmed" upon creation.

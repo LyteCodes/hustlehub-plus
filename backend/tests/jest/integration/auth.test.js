@@ -1,6 +1,6 @@
 'use strict';
 
-process.env.JWT_SECRET = 'jest-auth-test-secret';
+process.env.JWT_SECRET = 'jest-auth-test-secret-0123456789abcdef';
 process.env.NODE_ENV   = 'test';
 
 jest.mock('../../../src/config/db', () => jest.fn());

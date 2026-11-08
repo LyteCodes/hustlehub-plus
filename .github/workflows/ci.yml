@@ -67,7 +67,13 @@ jobs:
         run: npm run init
 
       - name: Run backend tests
+        id: backend_tests
         run: npm test
+        continue-on-error: true
+
+      - name: Run Jest tests
+        id: jest_tests
+        run: AUTH_RATE_LIMIT=100 npm run test:jest
         continue-on-error: true
 
       - name: Start backend
@@ -91,6 +97,7 @@ jobs:
           exit 1
 
       - name: Run Newman API integration tests
+        id: newman_tests
         run: |
           npx newman run \
             tests/postman/HustleHub-Auth.postman_collection.json \
@@ -100,6 +107,14 @@ jobs:
             --insecure \
             --reporters cli
         continue-on-error: true
+
+      - name: Backend CI test gate
+        if: always()
+        run: |
+          if [ "${{ steps.backend_tests.outcome }}" = "failure" ] || [ "${{ steps.jest_tests.outcome }}" = "failure" ] || [ "${{ steps.newman_tests.outcome }}" = "failure" ]; then
+            echo "One or more backend test suites failed."
+            exit 1
+          fi
 
       - name: Stop backend
         if: always()
@@ -131,8 +146,19 @@ jobs:
         run: npm install
 
       - name: Run frontend tests
+        id: frontend_tests
         run: npm test
         continue-on-error: true
 
       - name: Build frontend
+        id: frontend_build
         run: npm run build
+        continue-on-error: true
+
+      - name: Frontend CI test gate
+        if: always()
+        run: |
+          if [ "${{ steps.frontend_tests.outcome }}" = "failure" ] || [ "${{ steps.frontend_build.outcome }}" = "failure" ]; then
+            echo "One or more frontend checks failed."
+            exit 1
+          fi

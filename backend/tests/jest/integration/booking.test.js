@@ -1,6 +1,6 @@
 'use strict';
 
-process.env.JWT_SECRET = 'jest-booking-test-secret';
+process.env.JWT_SECRET = 'jest-booking-test-secret-0123456789abcdef';
 process.env.NODE_ENV   = 'test';
 
 jest.mock('../../../src/config/db', () => jest.fn());
@@ -15,7 +15,7 @@ const request  = require('supertest');
 const mongoose = require('mongoose');
 const jwt      = require('jsonwebtoken');
 
-const SECRET = 'jest-booking-test-secret';
+const SECRET = 'jest-booking-test-secret-0123456789abcdef';
 
 function makeToken(id, role) {
   return jwt.sign({ sub: id.toString(), role }, SECRET, { expiresIn: '1h' });
@@ -94,6 +94,28 @@ describe('POST /api/bookings', () => {
     expect(tx).not.toBeNull();
     expect(tx.status).toBe('Pending');
     expect(tx.amount).toBe(gig.rate);
+  });
+
+  test('409 when the client already has an open booking for the gig', async () => {
+    const freelancerId = new mongoose.Types.ObjectId();
+    const clientId     = new mongoose.Types.ObjectId();
+    const gig          = await createActiveGig(freelancerId);
+    const token        = makeToken(clientId, 'client');
+
+    const first = await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ gig: gig._id.toString() });
+
+    expect(first.status).toBe(201);
+
+    const second = await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ gig: gig._id.toString() });
+
+    expect(second.status).toBe(409);
+    expect(second.body.error.code).toBe('DUPLICATE_BOOKING');
   });
 
   test('404 when the gig does not exist', async () => {
