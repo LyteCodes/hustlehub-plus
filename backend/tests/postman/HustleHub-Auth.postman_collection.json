@@ -15,7 +15,6 @@
                         "method": "POST",
                         "header": [
                             {
-                                "key": "Content-Type",
                                 "value": "application/json"
                             }
                         ],
@@ -3217,8 +3216,8 @@
                                     "",
                                     "const json = pm.response.json();",
                                     "",
-                                    "pm.test(\"Returns aFORBIDDEN\", function () {",
-                                    "    pm.expect(json.error).to.equal(\"FORBIDDEN\");",
+                                    "pm.test(\"Returns a FORBIDDEN\", function () {",
+                                    "    pm.expect(json.error.code).to.equal(\"FORBIDDEN\");",
                                     "});"
                                 ]
                             }
