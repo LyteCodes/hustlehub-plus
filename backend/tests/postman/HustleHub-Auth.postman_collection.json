@@ -221,7 +221,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"email\": \"{{testEmail}}\",\n    \"password\": \"{{password}}\",\n    \"role\": \"{{role}}\"\n}"
+                            "raw": "{\n    \"name\": \"Newman Test User\",\n    \"email\": \"{{testEmail}}\",\n    \"password\": \"{{password}}\",\n    \"role\": \"{{role}}\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/auth/register",
@@ -283,7 +283,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"email\": \"{{testEmail}}\",\n    \"password\": \"{{password}}\",\n \"role\": \"{{role}}\"\n}"
+                            "raw": "{\n    \"name\": \"Newman Test User\",\n    \"email\": \"{{testEmail}}\",\n    \"password\": \"{{password}}\",\n    \"role\": \"{{role}}\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/auth/register",
@@ -1978,14 +1978,14 @@
                         "method": "GET",
                         "header": [],
                         "url": {
-                            "raw": "{{baseUrl}}/api/gigs/{{gigId}}",
+                            "raw": "{{baseUrl}}/api/gigs/{{createdGigId}}",
                             "host": [
                                 "{{baseUrl}}"
                             ],
                             "path": [
                                 "api",
                                 "gigs",
-                                "{{gigId}}"
+                                "{{createdGigId}}"
                             ]
                         }
                     },
@@ -2039,14 +2039,14 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{baseUrl}}/api/gigs/{{gigId}}",
+                            "raw": "{{baseUrl}}/api/gigs/{{createdGigId}}",
                             "host": [
                                 "{{baseUrl}}"
                             ],
                             "path": [
                                 "api",
                                 "gigs",
-                                "{{gigId}}"
+                                "{{createdGigId}}"
                             ]
                         }
                     },
@@ -2093,14 +2093,14 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{baseUrl}}/api/gigs/{{gigId}}",
+                            "raw": "{{baseUrl}}/api/gigs/{{createdGigId}}",
                             "host": [
                                 "{{baseUrl}}"
                             ],
                             "path": [
                                 "api",
                                 "gigs",
-                                "{{gigId}}"
+                                "{{createdGigId}}"
                             ]
                         }
                     },
@@ -2142,6 +2142,227 @@
                     ]
                 },
                 {
+                    "name": "Setup - Register Freelancer B",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Newman Ownership Test Freelancer B\",\n    \"email\": \"{{freelancerBEmail}}\",\n    \"password\": \"{{freelancerBPassword}}\",\n    \"role\": \"freelancer\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/register",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "register"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "pm.environment.set(\"freelancerBEmail\", `newman_freelancer_b_${Date.now()}@hustlehub.com`);",
+                                    "pm.environment.set(\"freelancerBPassword\", \"NewmanTest#2026\");"
+                                ]
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status is 201\", function () {",
+                                    "    pm.response.to.have.status(201);",
+                                    "});",
+                                    "",
+                                    "const json = pm.response.json();",
+                                    "",
+                                    "pm.test(\"Freelancer B was created\", function () {",
+                                    "    pm.expect(json.user).to.have.property(\"id\");",
+                                    "    pm.expect(json.user.email).to.equal(pm.environment.get(\"freelancerBEmail\"));",
+                                    "    pm.expect(json.user.role).to.equal(\"freelancer\");",
+                                    "});",
+                                    "",
+                                    "pm.environment.set(\"freelancerBId\", json.user.id);"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Setup - Login Freelancer B",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{freelancerBEmail}}\",\n    \"password\": \"{{freelancerBPassword}}\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "const json = pm.response.json();",
+                                    "",
+                                    "pm.test(\"Freelancer B login succeeded\", function () {",
+                                    "    pm.expect(json.user.email).to.equal(pm.environment.get(\"freelancerBEmail\"));",
+                                    "    pm.expect(json.user.role).to.equal(\"freelancer\");",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Freelancer B JWT was returned\", function () {",
+                                    "    pm.expect(json.token).to.be.a(\"string\").and.not.empty;",
+                                    "});",
+                                    "",
+                                    "pm.environment.set(\"freelancerBToken\", json.token);"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "PUT /gigs/:id - Different Freelancer (404)",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{freelancerBToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"title\": \"Unauthorized ownership update\",\n    \"category\": \"Design\",\n    \"description\": \"This update must not be applied.\",\n    \"rate\": 999,\n    \"durationHours\": 99,\n    \"status\": \"Active\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/gigs/{{createdGigId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "gigs",
+                                "{{createdGigId}}"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 404\", function () {",
+                                    "    pm.response.to.have.status(404);",
+                                    "});",
+                                    "",
+                                    "const json = pm.response.json();",
+                                    "",
+                                    "pm.test(\"Ownership violation returns NOT_FOUND\", function () {",
+                                    "    pm.expect(json.error.code).to.equal(\"NOT_FOUND\");",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "DELETE /gigs/:id - Different Freelancer (404)",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{freelancerBToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/gigs/{{createdGigId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "gigs",
+                                "{{createdGigId}}"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 404\", function () {",
+                                    "    pm.response.to.have.status(404);",
+                                    "});",
+                                    "",
+                                    "const json = pm.response.json();",
+                                    "",
+                                    "pm.test(\"Ownership violation returns NOT_FOUND\", function () {",
+                                    "    pm.expect(json.error.code).to.equal(\"NOT_FOUND\");",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
                     "name": "PUT /gigs/:id - No Token (401)",
                     "request": {
                         "auth": {
@@ -2171,7 +2392,7 @@
                             "path": [
                                 "api",
                                 "gigs",
-                                "{{gigId}}"
+                                "{{createdGigId}}"
                             ]
                         }
                     },
@@ -2238,14 +2459,14 @@
                             }
                         },
                         "url": {
-                            "raw": "{{baseUrl}}/api/gigs/{{gigId}}",
+                            "raw": "{{baseUrl}}/api/gigs/{{createdGigId}}",
                             "host": [
                                 "{{baseUrl}}"
                             ],
                             "path": [
                                 "api",
                                 "gigs",
-                                "{{gigId}}"
+                                "{{createdGigId}}"
                             ]
                         }
                     },
@@ -2305,14 +2526,14 @@
                             }
                         },
                         "url": {
-                            "raw": "{{baseUrl}}/api/gigs/{{gigId}}",
+                            "raw": "{{baseUrl}}/api/gigs/{{createdGigId}}",
                             "host": [
                                 "{{baseUrl}}"
                             ],
                             "path": [
                                 "api",
                                 "gigs",
-                                "{{gigId}}"
+                                "{{createdGigId}}"
                             ]
                         }
                     },
@@ -2376,14 +2597,14 @@
                         "method": "DELETE",
                         "header": [],
                         "url": {
-                            "raw": "{{baseUrl}}/api/gigs/{{gigId}}",
+                            "raw": "{{baseUrl}}/api/gigs/{{createdGigId}}",
                             "host": [
                                 "{{baseUrl}}"
                             ],
                             "path": [
                                 "api",
                                 "gigs",
-                                "{{gigId}}"
+                                "{{createdGigId}}"
                             ]
                         }
                     },
@@ -2436,14 +2657,14 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{baseUrl}}/api/gigs/{{gigId}}",
+                            "raw": "{{baseUrl}}/api/gigs/{{createdGigId}}",
                             "host": [
                                 "{{baseUrl}}"
                             ],
                             "path": [
                                 "api",
                                 "gigs",
-                                "{{gigId}}"
+                                "{{createdGigId}}"
                             ]
                         }
                     },
@@ -2489,14 +2710,14 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{baseUrl}}/api/gigs/{{gigId}}",
+                            "raw": "{{baseUrl}}/api/gigs/{{createdGigId}}",
                             "host": [
                                 "{{baseUrl}}"
                             ],
                             "path": [
                                 "api",
                                 "gigs",
-                                "{{gigId}}"
+                                "{{createdGigId}}"
                             ]
                         }
                     },

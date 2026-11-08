@@ -70,7 +70,9 @@ exports.updateGigByID = async (req, res, next) => {
     try {
     const gigID = req.params.id;
     const {title, category, description, rate, durationHours, status} = req.body;
-    const filter = { _id: gigID };
+    const filter = req.user.role === "admin"
+        ? { _id: gigID }
+        : { _id: gigID, freelancer: req.user.id };
 
     const gig = await Gig.findOneAndUpdate(
       filter,
@@ -87,7 +89,10 @@ exports.updateGigByID = async (req, res, next) => {
 exports.deleteGigByID = async (req, res, next) => {
     try {
     const gigID = req.params.id;
-    const filter = { _id: gigID };
+    const filter =
+      req.user.role === "admin"
+        ? { _id: gigID }
+        : { _id: gigID, freelancer: req.user.id };
 
     await Gig.findOneAndDelete(filter);
 
