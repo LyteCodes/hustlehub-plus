@@ -135,9 +135,111 @@ exports.create = async (req, res, next) => {
  */
 exports.mine = async (req, res, next) => {
     try {
-        const bookings = await Booking.find({ freelancer: req.user.id }).exec();
+        const field = req.user.role === "client" ? "client" : "freelancer";
+        const bookings = await Booking.find({ [field]: req.user.id }).exec();
 
         return res.status(200).json({bookings});
+    } catch (error) {
+        next(error);
+    }
+};
+/**
+ * Get the details of a specific booking by ID.
+ * - Validate the booking ID from the request parameters.
+ * - Fetch the booking where the ID matches and either the client or freelancer ID matches the authenticated user's ID.
+ * - Return a 200 OK response with the booking details if found, or an appropriate error response if not found or if an error occurs.
+ *
+ * @param {*} req
+ * @param {*} res
+ * @param {*} next
+ * @returns
+ */
+exports.detail = async (req, res, next) => {
+    try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(404).json({ error: { code: "NOT_FOUND", message: "Booking not found" } });
+        }
+
+        const booking = await Booking.findOne({
+            _id: req.params.id,
+            $or: [{ client: req.user.id }, { freelancer: req.user.id }],
+        }).exec();
+
+        if (!booking) {
+            return res.status(404).json({ error: { code: "NOT_FOUND", message: "Booking not found" } });
+        }
+
+        return res.status(200).json({ booking });
+    } catch (error) {
+        next(error);
+    }
+};
+/**
+ * Complete a booking.
+ * - Validate the booking ID from the request parameters.
+ * - Fetch the booking where the ID matches and the freelancer ID matches the authenticated user's ID.
+ * - Update the booking status to "Completed" and update the associated transaction status to "Completed".
+ * - Return a 200 OK response with the updated booking if successful, or an appropriate error response if not found or if an error occurs.
+ *
+ * @param {*} req
+ * @param {*} res
+ * @param {*} next
+ * @returns
+ */
+exports.complete = async (req, res, next) => {
+    try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(404).json({ error: { code: "NOT_FOUND", message: "Booking not found" } });
+        }
+
+        const booking = await Booking.findOne({
+            _id: req.params.id,
+            freelancer: req.user.id,
+        }).exec();
+
+        if (!booking) {
+            return res.status(404).json({ error: { code: "NOT_FOUND", message: "Booking not found" } });
+        }
+
+        booking.status = "Completed";
+        await booking.save();
+
+        await Transaction.findOneAndUpdate(
+            { booking: booking._id },
+            { status: "Completed" }
+        ).exec();
+
+        return res.status(200).json({ booking });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Cancel a booking.
+exports.cancel = async (req, res, next) => {
+    try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(404).json({ error: { code: "NOT_FOUND", message: "Booking not found" } });
+        }
+
+        const booking = await Booking.findOne({
+            _id: req.params.id,
+            client: req.user.id,
+        }).exec();
+
+        if (!booking) {
+            return res.status(404).json({ error: { code: "NOT_FOUND", message: "Booking not found" } });
+        }
+
+        booking.status = "Cancelled";
+        await booking.save();
+
+        await Transaction.findOneAndUpdate(
+            { booking: booking._id },
+            { status: "Refunded" }
+        ).exec();
+
+        return res.status(200).json({ booking });
     } catch (error) {
         next(error);
     }

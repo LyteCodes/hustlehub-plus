@@ -45,7 +45,7 @@ afterAll(async () => {
   await mongoose.disconnect();
 });
 
-// helpers 
+// helpers
 async function createActiveGig(freelancerId) {
   return Gig.create({
     freelancer:    freelancerId,
@@ -71,7 +71,6 @@ async function createPausedGig(freelancerId) {
 }
 
 // POST /api/bookings
-
 describe('POST /api/bookings', () => {
   test('201: creates booking and a Pending transaction for an active gig', async () => {
     const freelancerId = new mongoose.Types.ObjectId();
@@ -178,21 +177,21 @@ describe('POST /api/bookings', () => {
 });
 
 // GET /api/bookings/mine
-
 describe('GET /api/bookings/mine', () => {
   test('200 and returns bookings for authenticated freelancer', async () => {
     const freelancerId = new mongoose.Types.ObjectId();
     const clientId     = new mongoose.Types.ObjectId();
     const gig          = await createActiveGig(freelancerId);
 
-    // Create a booking as a client
     const clientToken = makeToken(clientId, 'client');
+
     await request(app)
       .post('/api/bookings')
       .set('Authorization', `Bearer ${clientToken}`)
       .send({ gig: gig._id.toString() });
 
     const freelancerToken = makeToken(freelancerId, 'freelancer');
+
     const res = await request(app)
       .get('/api/bookings/mine')
       .set('Authorization', `Bearer ${freelancerToken}`);
@@ -201,6 +200,28 @@ describe('GET /api/bookings/mine', () => {
     expect(Array.isArray(res.body.bookings)).toBe(true);
     expect(res.body.bookings.length).toBeGreaterThan(0);
     expect(res.body.bookings[0].freelancer).toBe(freelancerId.toString());
+  });
+
+  test('200 and returns bookings for authenticated client', async () => {
+    const freelancerId = new mongoose.Types.ObjectId();
+    const clientId     = new mongoose.Types.ObjectId();
+    const gig          = await createActiveGig(freelancerId);
+
+    const clientToken = makeToken(clientId, 'client');
+
+    await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ gig: gig._id.toString() });
+
+    const res = await request(app)
+      .get('/api/bookings/mine')
+      .set('Authorization', `Bearer ${clientToken}`);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.bookings)).toBe(true);
+    expect(res.body.bookings.length).toBe(1);
+    expect(res.body.bookings[0].client).toBe(clientId.toString());
   });
 
   test('200 returns empty array when freelancer has no bookings', async () => {
@@ -213,5 +234,197 @@ describe('GET /api/bookings/mine', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.bookings).toEqual([]);
+  });
+});
+
+// GET /api/bookings/:id
+describe('GET /api/bookings/:id', () => {
+  test('200 returns booking details for an authorized user', async () => {
+    const freelancerId = new mongoose.Types.ObjectId();
+    const clientId     = new mongoose.Types.ObjectId();
+    const gig          = await createActiveGig(freelancerId);
+    const clientToken  = makeToken(clientId, 'client');
+
+    const createRes = await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ gig: gig._id.toString() });
+
+    expect(createRes.status).toBe(201);
+
+    const res = await request(app)
+      .get(`/api/bookings/${createRes.body.booking._id}`)
+      .set('Authorization', `Bearer ${clientToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.booking._id).toBe(createRes.body.booking._id);
+  });
+
+  test('404 when user is not authorized to access booking', async () => {
+    const freelancerId    = new mongoose.Types.ObjectId();
+    const clientId        = new mongoose.Types.ObjectId();
+    const otherClientId   = new mongoose.Types.ObjectId();
+    const gig             = await createActiveGig(freelancerId);
+    const clientToken     = makeToken(clientId, 'client');
+    const otherClientToken = makeToken(otherClientId, 'client');
+
+    const createRes = await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ gig: gig._id.toString() });
+
+    expect(createRes.status).toBe(201);
+
+    const res = await request(app)
+      .get(`/api/bookings/${createRes.body.booking._id}`)
+      .set('Authorization', `Bearer ${otherClientToken}`);
+
+    expect(res.status).toBe(404);
+  });
+});
+
+// PATCH /api/bookings/:id/complete
+describe('PATCH /api/bookings/:id/complete', () => {
+  test('200 completes booking and transaction for freelancer', async () => {
+    const freelancerId   = new mongoose.Types.ObjectId();
+    const clientId       = new mongoose.Types.ObjectId();
+    const gig            = await createActiveGig(freelancerId);
+    const clientToken    = makeToken(clientId, 'client');
+    const freelancerToken = makeToken(freelancerId, 'freelancer');
+
+    const createRes = await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ gig: gig._id.toString() });
+
+    expect(createRes.status).toBe(201);
+
+    const res = await request(app)
+      .patch(`/api/bookings/${createRes.body.booking._id}/complete`)
+      .set('Authorization', `Bearer ${freelancerToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.booking.status).toBe('Completed');
+
+    const transaction = await Transaction.findOne({
+      booking: createRes.body.booking._id,
+    });
+
+    expect(transaction.status).toBe('Completed');
+  });
+
+  test('403 when client attempts to complete booking', async () => {
+    const freelancerId = new mongoose.Types.ObjectId();
+    const clientId     = new mongoose.Types.ObjectId();
+    const gig          = await createActiveGig(freelancerId);
+    const clientToken  = makeToken(clientId, 'client');
+
+    const createRes = await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ gig: gig._id.toString() });
+
+    expect(createRes.status).toBe(201);
+
+    const res = await request(app)
+      .patch(`/api/bookings/${createRes.body.booking._id}/complete`)
+      .set('Authorization', `Bearer ${clientToken}`);
+
+    expect(res.status).toBe(403);
+  });
+});
+
+// GET /api/transactions/income
+describe('GET /api/transactions/income', () => {
+  test('excludes pending income, includes completed booking income, and rejects clients', async () => {
+    const freelancerId = new mongoose.Types.ObjectId();
+    const clientId = new mongoose.Types.ObjectId();
+    const gig = await createActiveGig(freelancerId);
+    const clientToken = makeToken(clientId, 'client');
+    const freelancerToken = makeToken(freelancerId, 'freelancer');
+
+    const createRes = await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ gig: gig._id.toString() });
+
+    expect(createRes.status).toBe(201);
+
+    const pendingIncome = await request(app)
+      .get('/api/transactions/income')
+      .set('Authorization', `Bearer ${freelancerToken}`);
+
+    expect(pendingIncome.status).toBe(200);
+    expect(pendingIncome.body.totalIncome).toBe(0);
+
+    const clientIncome = await request(app)
+      .get('/api/transactions/income')
+      .set('Authorization', `Bearer ${clientToken}`);
+
+    expect(clientIncome.status).toBe(403);
+
+    const completeRes = await request(app)
+      .patch(`/api/bookings/${createRes.body.booking._id}/complete`)
+      .set('Authorization', `Bearer ${freelancerToken}`);
+
+    expect(completeRes.status).toBe(200);
+
+    const completedIncome = await request(app)
+      .get('/api/transactions/income')
+      .set('Authorization', `Bearer ${freelancerToken}`);
+
+    expect(completedIncome.status).toBe(200);
+    expect(completedIncome.body.totalIncome).toBe(gig.rate);
+  });
+});
+
+// PATCH /api/bookings/:id/cancel
+describe('PATCH /api/bookings/:id/cancel', () => {
+  test('200 cancels booking and refunds transaction for client', async () => {
+    const freelancerId = new mongoose.Types.ObjectId();
+    const clientId = new mongoose.Types.ObjectId();
+    const gig = await createActiveGig(freelancerId);
+    const clientToken = makeToken(clientId, 'client');
+
+    const createRes = await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ gig: gig._id.toString() });
+
+    expect(createRes.status).toBe(201);
+
+    const res = await request(app)
+      .patch(`/api/bookings/${createRes.body.booking._id}/cancel`)
+      .set('Authorization', `Bearer ${clientToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.booking.status).toBe('Cancelled');
+
+    const transaction = await Transaction.findOne({
+      booking: createRes.body.booking._id,
+    });
+
+    expect(transaction.status).toBe('Refunded');
+  });
+
+  test('403 when freelancer attempts to cancel booking', async () => {
+    const freelancerId = new mongoose.Types.ObjectId();
+    const clientId = new mongoose.Types.ObjectId();
+    const gig = await createActiveGig(freelancerId);
+    const clientToken = makeToken(clientId, 'client');
+    const freelancerToken = makeToken(freelancerId, 'freelancer');
+
+    const createRes = await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ gig: gig._id.toString() });
+
+    expect(createRes.status).toBe(201);
+
+    const res = await request(app)
+      .patch(`/api/bookings/${createRes.body.booking._id}/cancel`)
+      .set('Authorization', `Bearer ${freelancerToken}`);
+
+    expect(res.status).toBe(403);
   });
 });

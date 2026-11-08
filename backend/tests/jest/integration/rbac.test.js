@@ -45,12 +45,15 @@ afterAll(async () => {
 
 //Freelancer-only routes
 describe('freelancer-only routes', () => {
-  test('GET /api/bookings/mine → 403 for client', async () => {
+  test('GET /api/bookings/mine → 200 for client', async () => {
     const res = await request(app)
       .get('/api/bookings/mine')
       .set('Authorization', `Bearer ${makeToken('client')}`);
-    expect(res.status).toBe(403);
-  });
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.bookings)).toBe(true);
+});
+
 
   test('GET /api/gigs/mine → 403 for client', async () => {
     const res = await request(app)
