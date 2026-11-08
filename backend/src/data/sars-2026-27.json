@@ -1,0 +1,48 @@
+{
+  "_comment": "SARS 2026/27 individual income tax table (1 March 2026 – 28 February 2027). All monetary amounts are in integer South African cents (1/100 rand). Rates are in basis points (bps) where 10 000 bps = 100%. Primary threshold R99 000 → no tax below that income.",
+
+  "taxYear": "2026/27",
+  "period": {
+    "start": "2026-03-01",
+    "end":   "2027-02-28",
+    "totalDays": 365
+  },
+
+  "brackets": [
+    { "thresholdCents":          0, "baseTaxCents":          0, "rateBps": 1800 },
+    { "thresholdCents":   24590000, "baseTaxCents":    4426200, "rateBps": 2600 },
+    { "thresholdCents":   38390000, "baseTaxCents":    8014200, "rateBps": 3100 },
+    { "thresholdCents":   53200000, "baseTaxCents":   12605300, "rateBps": 3600 },
+    { "thresholdCents":   69810000, "baseTaxCents":   18584900, "rateBps": 3900 },
+    { "thresholdCents":   89010000, "baseTaxCents":   26072900, "rateBps": 4100 },
+    { "thresholdCents":  188690000, "baseTaxCents":   66941700, "rateBps": 4500 }
+  ],
+
+  "_bracketsNote": "Band applies when income >= thresholdCents. Formula: tax = baseTaxCents + round((incomeCents - thresholdCents) * rateBps / 10000). R0-R245 900 @ 18%, R245 901-R383 900 @ 26%, R383 901-R532 000 @ 31%, R532 001-R698 100 @ 36%, R698 101-R890 100 @ 39%, R890 101-R1 886 900 @ 41%, R1 886 901+ @ 45%.",
+
+  "rebates": {
+    "primaryCents":   1782000,
+    "secondaryCents":  977400,
+    "tertiaryCents":   326700
+  },
+
+  "_rebatesNote": "Primary (all natural persons): R17 820. Secondary (age 65–74): additional R9 774. Tertiary (age 75+): additional R3 267. Thresholds: <65 R99 000, 65–74 R153 300, 75+ R171 450.",
+
+  "thresholds": {
+    "under65Cents":   9900000,
+    "age65to74Cents": 15330000,
+    "age75plusCents": 17145000
+  },
+
+  "platformFeeRateBps": 1000,
+
+  "_platformFeeNote": "HustleHub+ platform fee deducted from gross income before tax calculation. 1000 bps = 10%.",
+
+  "provisionalTax": {
+    "firstDeadline":  "2026-08-31",
+    "secondDeadline": "2027-02-28",
+    "topUpDeadline":  "2027-09-30"
+  },
+
+  "_provisionalNote": "IRP6 first provisional payment (50% of annual estimate) due 31 Aug 2026. Second payment (balance) due 28 Feb 2027. Voluntary top-up to avoid under-estimation penalty due 30 Sep 2027."
+}

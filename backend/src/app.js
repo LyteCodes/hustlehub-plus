@@ -1,9 +1,4 @@
 /**
- * @file app.js
- * @description Express application setup: security middleware (Helmet, CORS), JSON parsing,
- * Swagger docs, auth routes, and centralized error handling.
- * Code based on the following source:
- *
  * https://www.npmjs.com/package/express
  * https://expressjs.com/en/4x/api/express/
  * https://helmetjs.github.io/
@@ -26,6 +21,7 @@ const gigRoutes = require("./routes/gig.routes");
 const adminRoutes = require("./routes/admin.routes");
 const bookingRoutes = require("./routes/booking.routes");
 const transactionRoutes = require("./routes/transaction.routes");
+const meRoutes = require("./routes/me.routes");
 const connectToDB = require("./config/db");
 const { errorHandler, errorHandler404 } = require("./middleware/error.middleware");
 const { globalRateLimiter } = require("./middleware/rate-limit.middleware");
@@ -42,8 +38,6 @@ app.get("/health", (req, res) => {
 });
  
 app.disable("x-powered-by");
-
-// Global rate limiter middleware
 app.use(globalRateLimiter);
 
 // Swagger docs
@@ -119,7 +113,6 @@ if (process.env.NODE_ENV !== "production") {
         },
       },
     },
-    // Absolute path so it works regardless of where Node is started from
     apis: [path.join(__dirname, "routes", "*.js")],
   });
  
@@ -135,7 +128,6 @@ if (process.env.NODE_ENV !== "production") {
         scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:"],
-        // Prevents assets being forced to https on plain-http localhost
         "upgrade-insecure-requests": null,
       },
     }),
@@ -185,6 +177,7 @@ app.use("/api/gigs", gigRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/me", meRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
