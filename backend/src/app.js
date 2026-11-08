@@ -144,7 +144,7 @@ app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
-        defaultSrc: ["'self'"],
+        defaultSrc: ["'none'"],
         scriptSrc: ["'self'"],
         styleSrc: ["'self'"],
         imgSrc: ["'self'", "data:"],
