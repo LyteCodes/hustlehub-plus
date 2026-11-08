@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { myBookings, myTransactions, setBookingStatus } from '../api/bookings'
+import { myBookings, myTransactions, cancelBooking } from '../api/bookings'
 import { parseApiError } from '../api/client'
 import { useAsync } from '../lib/useAsync'
 import CategoryArt from '../components/CategoryArt'
@@ -38,7 +38,7 @@ export default function MyBookingsPage() {
     async function confirmCancel() {
         setBusy(true)
         try {
-            await setBookingStatus(cancelTarget.id, 'Cancelled')
+            await cancelBooking(cancelTarget.id)
             setCancelTarget(null)
             setActionError('')
             list.reload()
