@@ -96,6 +96,9 @@ jobs:
           cat /tmp/hustlehub-backend.log
           exit 1
 
+      - name: Debug Mongoose
+        run: node -e 'const Booking=require("./src/models/booking"); console.log("mongoose",require("mongoose").version); console.log("status handlers",Object.keys(Booking.schema.path("status").$conditionalHandlers)); console.log("filter",Booking.findOne({status:{$in:["Pending","Confirmed"]}}).getFilter())'
+
       - name: Run Newman API integration tests
         id: newman_tests
         run: |
