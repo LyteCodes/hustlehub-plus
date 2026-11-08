@@ -250,8 +250,9 @@ describe("Auth Integration Tests", () => {
 
     it("permits access when a valid bearer token is present (GET /me - Valid Token / Me Valid Token)", async () => {
       const meUser = {
+        name: "Test Me Freelancer",
         email: `test_me_${Date.now()}@hustlehub.co.za`,
-        password: "SecurePassword123!",
+        password: "HhTest_9vK2mQ7x!2026",
         role: "freelancer",
       };
 
