@@ -1,6 +1,5 @@
-            
 Frontend Reference List
-Connaire — KAN-17 Frontend Contribution
+Connaire — Frontend Contribution
 
 JavaScript Runtime and Build Tooling
 Ecma International (2023) ECMAScript 2023 Language Specification (ECMA-262, 14th edition). Geneva: Ecma International. Available at: https://tc39.es/ecma262/
@@ -42,6 +41,15 @@ Kent, K.C. and Testing Library contributors (2024) React Testing Library: Simple
 Testing Library contributors (2024) @testing-library/user-event: Fire events the way a user would. Available at: https://testing-library.com/docs/user-event/intro
 Testing Library contributors (2024) @testing-library/jest-dom: Custom jest matchers to test the state of the DOM. Available at: https://github.com/testing-library/jest-dom
 Jsdom contributors (2024) jsdom: A JavaScript implementation of various web standards, for use with Node.js. Available at: https://github.com/jsdom/jsdom
+Microsoft and Playwright contributors (2024) Playwright: Reliable end-to-end testing for modern web apps. Available at: https://playwright.dev/docs/intro
+Microsoft and Playwright contributors (2024) Locators – Playwright. Playwright documentation. Available at: https://playwright.dev/docs/locators
+Microsoft and Playwright contributors (2024) Assertions – Playwright. Playwright documentation. Available at: https://playwright.dev/docs/test-assertions
+Microsoft and Playwright contributors (2024) @playwright/test: Configuration and test runner API. Playwright documentation. Available at: https://playwright.dev/docs/api/class-test
+
+Tax Legislation and Revenue Authority
+South African Revenue Service (2026) Tax rates for individuals: 2026/27 tax year. SARS. Available at: https://www.sars.gov.za/tax-rates/income-tax/rates-of-tax-for-individuals/
+South African Revenue Service (2026) Provisional tax (IRP6): Who must pay and when. SARS. Available at: https://www.sars.gov.za/types-of-tax/personal-income-tax/provisional-tax/
+South African Revenue Service (2026) Tax rebates and thresholds: 2026/27 tax year. SARS. Available at: https://www.sars.gov.za/tax-rates/income-tax/rebates-and-thresholds/
 
 Web Standards
 MDN Web Docs (2024) sessionStorage – Web APIs. Mozilla Developer Network. Available at: https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage

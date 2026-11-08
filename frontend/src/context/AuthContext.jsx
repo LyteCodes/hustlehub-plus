@@ -12,7 +12,11 @@ export function AuthProvider({ children }) {
         if (!getToken()) return;
         let cancelled = false;
         authApi.me()
-            .then((res) => { if (!cancelled) setUser(res.user); })
+            .then((res) => {
+                // me() calls unwrap → res is { data: { id, name, email, role } }
+                // so we need res.data to get the actual user object
+                if (!cancelled) setUser(res.data ?? res);
+            })
             .catch(() => setToken(null))
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
@@ -26,23 +30,23 @@ export function AuthProvider({ children }) {
 
     const login = useCallback(async (credentials) => {
         const res = await authApi.login(credentials);
-        setToken(res.token);
-        setUser(res.user);
-        return res.user;
+        // login() calls unwrap → res is { data: { token, user } }
+        const payload = res.data ?? res;
+        setToken(payload.token);
+        setUser(payload.user);
+        return payload.user;
     }, []);
 
     const register = useCallback(async (payload) => {
         await authApi.register(payload);
         const res = await authApi.login({ email: payload.email, password: payload.password });
-        setToken(res.token);
-        setUser(res.user);
-        return res.user;
+        const data = res.data ?? res;
+        setToken(data.token);
+        setUser(data.user);
+        return data.user;
     }, []);
 
-    const logout = useCallback(() => {
-        setToken(null);
-        setUser(null);
-    }, []);
+    const logout = useCallback(() => { setToken(null); setUser(null); }, []);
 
     const value = useMemo(
         () => ({ user, loading, isAuthenticated: Boolean(user), login, register, logout }),
