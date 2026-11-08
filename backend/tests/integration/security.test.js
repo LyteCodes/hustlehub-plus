@@ -105,4 +105,11 @@ describe("Security controls (KAN-07, KAN-08)", () => {
     });
     assert.equal(res.status, 400);
   });
+
+  it("rejects a malformed id with 400, not 500", async () => {
+    const res = await request("/api/gigs/not-an-id", {
+      headers: bearer(tokenFor("freelancer")),
+    });
+    assert.equal(res.status, 400);
+  });
 });
