@@ -1,24 +1,21 @@
 /**
- * @file auth.middleware.js
- * @description Authentication and authorization middleware: verifies Bearer JWTs
- * and restricts routes to allowed roles.
- * Code based on the following source:
- *
  * https://www.npmjs.com/package/jsonwebtoken
  * https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Authorization
  * https://expressjs.com/en/guide/writing-middleware/
  */
 
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 const config = require("../config");
 const logger = require("../lib/logger");
+const ALLOWED_ROLES = ['freelancer', 'client', 'admin'];
 
 /**
  * Verify the Bearer token in the Authorization header and attach the identity
  * to req.user. Responds 401 for missing, expired, or invalid tokens.
- * @param {Object} req - The request object.
- * @param {Object} res - The response object.
- * @param {Function} next - The next middleware function.
+ * @param {Object} 
+ * @param {Object} 
+ * @param {Function}
  * @returns {void}
  */
 const authenticate = (req, res, next) => {
@@ -38,6 +35,20 @@ const authenticate = (req, res, next) => {
   try {
     // Verify sig & check exp using JWT_SECRET
     const decoded = jwt.verify(token, config.jwt.secret);
+
+    // Reject tokens whose claims are not plain strings of the expected shape.
+    // jwt.verify() only checks the signature — a crafted token with a valid
+    // signature could carry an object in sub/role, which would flow into
+    // MongoDB queries as an operator injection vector.
+    if (
+      typeof decoded.sub !== 'string' ||
+      !mongoose.Types.ObjectId.isValid(decoded.sub) ||
+      !ALLOWED_ROLES.includes(decoded.role)
+    ) {
+      return res.status(401).json({
+        error: { code: 'INVALID_TOKEN', message: 'Invalid authentication token.' },
+      });
+    }
 
     // Attach standard identity payload to request object
     req.user = { id: decoded.sub, role: decoded.role };
