@@ -30,5 +30,5 @@ function validateNoteLength(strLen){
     return strLen.length <= 500;
 }
 
-const Booking = mongoose.model('Booking', bookingSchema);
+const Booking = mongoose.models.Booking || mongoose.model('Booking', bookingSchema);
 module.exports = Booking;

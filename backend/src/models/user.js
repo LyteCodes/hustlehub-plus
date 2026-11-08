@@ -49,5 +49,5 @@ userSchema.methods.isValidPassword = async function (password) {
 }
 
 userSchema.plugin(beautifyUnique);
-const User = mongoose.model('User', userSchema);
+const User = mongoose.models.User || mongoose.model('User', userSchema);
 module.exports = User;
