@@ -15,6 +15,7 @@
  
 const path = require("path");
 const express = require("express");
+const mongoose = require("mongoose");
 const helmet = require("helmet");
 const cors = require("cors");
 const swaggerJsdoc = require("swagger-jsdoc");
@@ -30,6 +31,15 @@ const { errorHandler, errorHandler404 } = require("./middleware/error.middleware
 const { globalRateLimiter } = require("./middleware/rate-limit.middleware");
  
 const app = express();
+
+app.get("/health", (req, res) => {
+  const databaseReady = mongoose.connection.readyState === 1;
+
+  res.status(databaseReady ? 200 : 503).json({
+    status: databaseReady ? "ok" : "degraded",
+    database: databaseReady ? "connected" : "disconnected",
+  });
+});
  
 app.disable("x-powered-by");
 
