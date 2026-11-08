@@ -108,6 +108,10 @@ jobs:
             --reporters cli
         continue-on-error: true
 
+      - name: Show backend log
+        if: always()
+        run: cat /tmp/hustlehub-backend.log
+
       - name: Backend CI test gate
         if: always()
         run: |
