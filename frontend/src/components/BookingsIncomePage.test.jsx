@@ -7,7 +7,7 @@ vi.mock("../api/bookings", () => ({
     incomingBookings: vi.fn(),
     income: vi.fn(),
     incomeSummary: vi.fn(),
-    setBookingStatus: vi.fn(),
+    completeBooking: vi.fn(),
 }));
 
 vi.mock("../components/CategoryArt", () => ({

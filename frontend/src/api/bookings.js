@@ -10,15 +10,14 @@ export const myBookings = async (params) => {
 };
 
 export const incomingBookings = (params) => api.get("/bookings/incoming", { params }).then(unwrap);
-export const setBookingStatus = (id, status) => api.patch(`/bookings/${id}/status`, { status }).then(unwrap);
+export const completeBooking = (id) => api.patch(`/bookings/${id}/complete`).then(unwrap);
+export const cancelBooking = (id) => api.patch(`/bookings/${id}/cancel`).then(unwrap);
 export const myTransactions = (params) => api.get("/transactions/mine", { params }).then(unwrap);
 
 export const income = () => api.get("/income").then(unwrap);
 
 export const incomeSummary = async () => {
     const res = await api.get("/me/income-summary").then(unwrap);
-    // mock returns { freelancerId, generatedAt, summary } at top level
-    // component expects { summary: [...] }
     if (res?.summary) return res;
     return res;
 };

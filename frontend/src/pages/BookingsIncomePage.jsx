@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { incomingBookings, income, incomeSummary, setBookingStatus } from '../api/bookings'
+import { incomingBookings, income, incomeSummary, completeBooking } from '../api/bookings'
 import { parseApiError } from '../api/client'
 import { useAsync } from '../lib/useAsync'
 import CategoryArt from '../components/CategoryArt'
@@ -51,7 +51,7 @@ function IncomingTab() {
         setPendingId(booking.id)
         setActionError('')
         try {
-            await setBookingStatus(booking.id, 'Completed')
+            await completeBooking(booking.id)
             list.reload()
         } catch (err) {
             setActionError(parseApiError(err).message)
