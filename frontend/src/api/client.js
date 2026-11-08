@@ -1,7 +1,5 @@
 import axios from "axios";
 
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== "false";
-
 const TOKEN_KEY = "hh_token";
 
 let token = null;
@@ -14,6 +12,7 @@ try {
 export function getToken() {
     return token;
 }
+
 export function setToken(next) {
     token = next || null;
     try {
@@ -23,19 +22,13 @@ export function setToken(next) {
 }
 
 export const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || "/api",
+    baseURL: "/api",
     timeout: 15000,
     headers: { "Content-Type": "application/json" },
 });
 
-let mockAdapterPromise = null;
-
-api.interceptors.request.use(async (config) => {
+api.interceptors.request.use((config) => {
     if (token) config.headers.Authorization = `Bearer ${token}`;
-    if (USE_MOCK) {
-        mockAdapterPromise ??= import("./mock/adapter").then((m) => m.mockAdapter);
-        config.adapter = await mockAdapterPromise;
-    }
     return config;
 });
 
@@ -63,7 +56,7 @@ export function parseApiError(err, fallback = "Something went wrong. Please try 
             if (key && !fields[key]) fields[key] = e.message || e.msg;
         }
     }
-    let message = body?.message || body?.error || "";
+    let message = body?.message || body?.error?.message || body?.error || "";
     if (!err?.response) message = "Can't reach the server. Check your connection and try again.";
     else if (status === 429) message = message || "Too many attempts. Please wait a few minutes and try again.";
     else if (status === 403) message = message || "You don't have permission to do that.";
