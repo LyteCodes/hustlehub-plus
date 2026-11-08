@@ -278,10 +278,11 @@ describe("Auth Integration Tests", () => {
       );
 
       const res = await request("/api/auth/me", {
-        headers: { Authorization: `Bearer ${authToken}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      assert.strictEqual(res.status, 200);
-      assert.strictEqual(res.body?.user?.email, testUser.email);
+
+      assert.strictEqual(res.status, 200, JSON.stringify(res.body));
+      assert.strictEqual(res.body?.user?.email, meUser.email);
       assert.strictEqual(res.body?.user?.passwordHash, undefined);
     });
   });

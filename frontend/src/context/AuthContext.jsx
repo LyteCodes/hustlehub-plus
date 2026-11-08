@@ -33,7 +33,6 @@ export function AuthProvider({ children }) {
 
     const register = useCallback(async (payload) => {
         await authApi.register(payload);
-        // Backend register returns no token — login immediately after
         const res = await authApi.login({ email: payload.email, password: payload.password });
         setToken(res.token);
         setUser(res.user);

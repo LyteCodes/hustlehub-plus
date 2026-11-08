@@ -20,32 +20,27 @@ function App() {
         <AuthProvider>
             <BrowserRouter>
                 <Routes>
-                    {/* Guest only - no layout */}
                     <Route element={<GuestRoute />}>
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<RegisterPage />} />
                     </Route>
 
-                    {/* All authenticated routes get the Layout (navbar) */}
                     <Route element={<ProtectedRoute />}>
                         <Route element={<Layout />}>
                             <Route path="/gigs" element={<BrowseGigsPage />} />
                             <Route path="/gigs/:id" element={<GigDetailPage />} />
                             <Route path="/booking-confirmed/:id" element={<BookingConfirmedPage />} />
 
-                            {/* Client only */}
                             <Route element={<RoleRoute roles={['client']} />}>
                                 <Route path="/my-bookings" element={<MyBookingsPage />} />
                             </Route>
 
-                            {/* Freelancer only */}
                             <Route element={<RoleRoute roles={['freelancer']} />}>
                                 <Route path="/my-gigs" element={<MyGigsPage />} />
                                 <Route path="/my-gigs/create" element={<CreateGigPage />} />
                                 <Route path="/bookings-income" element={<BookingsIncomePage />} />
                             </Route>
 
-                            {/* Admin only */}
                             <Route element={<RoleRoute roles={['admin']} />}>
                                 <Route path="/admin" element={<AdminPage />} />
                             </Route>
