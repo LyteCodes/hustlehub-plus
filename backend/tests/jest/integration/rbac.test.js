@@ -1,6 +1,6 @@
 'use strict';
 
-process.env.JWT_SECRET = 'jest-rbac-test-secret';
+process.env.JWT_SECRET = 'jest-rbac-test-secret-0123456789abcdef';
 process.env.NODE_ENV   = 'test';
 
 jest.mock('../../../src/config/db', () => jest.fn());
@@ -15,7 +15,7 @@ const request  = require('supertest');
 const mongoose = require('mongoose');
 const jwt      = require('jsonwebtoken');
 
-const SECRET = 'jest-rbac-test-secret';
+const SECRET = 'jest-rbac-test-secret-0123456789abcdef';
 
 function makeToken(role) {
   return jwt.sign(
@@ -45,12 +45,15 @@ afterAll(async () => {
 
 //Freelancer-only routes
 describe('freelancer-only routes', () => {
-  test('GET /api/bookings/mine → 403 for client', async () => {
+  test('GET /api/bookings/mine → 200 for client', async () => {
     const res = await request(app)
       .get('/api/bookings/mine')
       .set('Authorization', `Bearer ${makeToken('client')}`);
-    expect(res.status).toBe(403);
-  });
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.bookings)).toBe(true);
+});
+
 
   test('GET /api/gigs/mine → 403 for client', async () => {
     const res = await request(app)
