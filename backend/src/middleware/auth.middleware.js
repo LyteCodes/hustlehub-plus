@@ -10,7 +10,11 @@
  */
 
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 const config = require("../config");
+const logger = require("../lib/logger");
+
+const ALLOWED_ROLES = ['freelancer', 'client', 'admin'];
 
 /**
  * Verify the Bearer token in the Authorization header and attach the identity
@@ -37,6 +41,20 @@ const authenticate = (req, res, next) => {
   try {
     // Verify sig & check exp using JWT_SECRET
     const decoded = jwt.verify(token, config.jwt.secret);
+
+    // Reject tokens whose claims are not plain strings of the expected shape.
+    // jwt.verify() only checks the signature — a crafted token with a valid
+    // signature could carry an object in sub/role, which would flow into
+    // MongoDB queries as an operator injection vector.
+    if (
+      typeof decoded.sub !== 'string' ||
+      !mongoose.Types.ObjectId.isValid(decoded.sub) ||
+      !ALLOWED_ROLES.includes(decoded.role)
+    ) {
+      return res.status(401).json({
+        error: { code: 'INVALID_TOKEN', message: 'Invalid authentication token.' },
+      });
+    }
 
     // Attach standard identity payload to request object
     req.user = { id: decoded.sub, role: decoded.role };
@@ -73,6 +91,15 @@ const authorizeRoles = (...allowedRoles) => {
     }
 
     if (!allowedRoles.includes(req.user.role)) {
+      logger.warn("Access denied", {
+        event:         "security.access_denied",
+        userId:        req.user.id,
+        userRole:      req.user.role,
+        allowedRoles,
+        method:        req.method,
+        path:          req.path,
+        ip:            req.ip,
+      });
       return res.status(403).json({ error: "Access denied" });
     }
     next();

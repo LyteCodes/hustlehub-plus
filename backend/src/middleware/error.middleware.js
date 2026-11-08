@@ -8,6 +8,8 @@
  * https://expressjs.com/en/guide/writing-middleware/
  */
 
+const logger = require("../lib/logger");
+
 // Centralised error handling middleware
 /**
  * Handle unexpected errors and respond with a generic 500 payload.
@@ -18,7 +20,14 @@
  * @returns {void}
  */
 const errorHandler = (err, req, res, next) => {
-  console.error(err);
+  logger.error("Unhandled error", {
+    event:   "error.unhandled",
+    message: err.message,
+    stack:   err.stack,
+    method:  req.method,
+    path:    req.path,
+    userId:  req.user?.id ?? null,
+  });
 
   return res.status(500).json({
     error: {

@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Booking = require("../models/booking");
 const Gig = require("../models/gig");
 const Transaction = require("../models/transaction");
+const logger = require("../lib/logger");
 
 /**
  * Create a new booking for a gig.
@@ -71,12 +72,31 @@ exports.create = async (req, res, next) => {
          * The amount is derived from the gig rate, while the booking, client,
          * and freelancer IDs are derived from the created booking.
          */
-        await Transaction.create({
+        const transaction = await Transaction.create({
             booking: booking._id,
             client: booking.client,
             freelancer: booking.freelancer,
             amount: gigExists.rate,
             status: "Pending",
+        });
+
+        logger.info("Booking created", {
+            event: "booking.created",
+            bookingId:    String(booking._id),
+            gigId:        String(gigExists._id),
+            clientId:     String(booking.client),
+            freelancerId: String(booking.freelancer),
+            amountRand:   gigExists.rate,
+        });
+
+        logger.info("Transaction recorded", {
+            event:         "transaction.recorded",
+            transactionId: String(transaction._id),
+            bookingId:     String(booking._id),
+            clientId:      String(transaction.client),
+            freelancerId:  String(transaction.freelancer),
+            amountRand:    transaction.amount,
+            status:        transaction.status,
         });
 
         res.status(201).json({

@@ -1,9 +1,4 @@
 /**
- * @file auth.controller.js
- * @description Auth API controllers: user registration, login, and the
- * protected current-user endpoint.
- * Code based on the following source:
- *
  * https://www.npmjs.com/package/bcrypt
  * https://www.npmjs.com/package/jsonwebtoken
  */
@@ -12,15 +7,16 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const config = require("../config");
 const UserModel = require("../models/user.model");
-const User = require("../models/user")
+const User = require("../models/user");
+const logger = require("../lib/logger");
 
 const SALT_ROUNDS = 12;
 
 /**
  * Register a new user. Rejects duplicate emails and returns the created user.
- * @param {Object} req - The request object.
- * @param {Object} res - The response object.
- * @param {Function} next - The next middleware function.
+ * @param {Object} req
+ * @param {Object} res 
+ * @param {Function} next 
  * @returns {Promise<void>}
  */
 exports.register = async (req, res, next) => {
@@ -68,9 +64,9 @@ exports.register = async (req, res, next) => {
 
 /**
  * Authenticate a user and issue a signed JWT on success.
- * @param {Object} req - The request object.
- * @param {Object} res - The response object.
- * @param {Function} next - The next middleware function.
+ * @param {Object} req
+ * @param {Object} res 
+ * @param {Function} next
  * @returns {Promise<void>}
  */
 exports.login = async (req, res, next) => {
@@ -79,23 +75,38 @@ exports.login = async (req, res, next) => {
 
     // Verify whether user exists
     const user = await User.findOne({email});
-    if (!user)
+    if (!user) {
+      logger.warn("Login failed – unknown email", {
+        event: "auth.login.failed",
+        reason: "user_not_found",
+        email,
+        ip: req.ip,
+      });
       return res.status(401).json({
         error: {
           code: "INVALID_CREDENTIALS",
           message: "Invalid email or password.",
         },
       });
+    }
 
     // Verify hash of given password matches stored passwordHash
     const pwMatch = await bcrypt.compare(password, user.password);
-    if (!pwMatch)
+    if (!pwMatch) {
+      logger.warn("Login failed – wrong password", {
+        event: "auth.login.failed",
+        reason: "invalid_password",
+        userId: user.id,
+        email,
+        ip: req.ip,
+      });
       return res.status(401).json({
         error: {
           code: "INVALID_CREDENTIALS",
           message: "Invalid email or password.",
         },
       });
+    }
 
     // Mint token
     const token = jwt.sign(
@@ -103,6 +114,14 @@ exports.login = async (req, res, next) => {
       config.jwt.secret,
       { expiresIn: "1h" },
     );
+
+    logger.info("Login succeeded", {
+      event: "auth.login.succeeded",
+      userId: user.id,
+      email,
+      role: user.role,
+      ip: req.ip,
+    });
 
     return res.status(200).json({
       message: "Login successful.",
@@ -120,9 +139,9 @@ exports.login = async (req, res, next) => {
 
 /**
  * Return the authenticated user's profile from the token payload.
- * @param {Object} req - The request object (req.user set by auth middleware).
- * @param {Object} res - The response object.
- * @param {Function} next - The next middleware function.
+ * @param {Object} req 
+ * @param {Object} res 
+ * @param {Function} next 
  * @returns {Promise<void>}
  */
 exports.me = async (req, res, next) => {

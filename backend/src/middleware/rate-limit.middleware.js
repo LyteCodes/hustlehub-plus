@@ -1,10 +1,26 @@
 const { rateLimit } = require("express-rate-limit");
+const logger = require("../lib/logger");
+
+function rateLimitHandler(limiterName) {
+  return (req, res, next, options) => {
+    logger.warn("Rate limit exceeded", {
+      event:       "security.rate_limited",
+      limiter:     limiterName,
+      ip:          req.ip,
+      method:      req.method,
+      path:        req.path,
+      userId:      req.user?.id ?? null,
+    });
+    res.status(options.statusCode).json(options.message);
+  };
+}
 
 const bookingRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 10, // Limit each IP to 10 requests per windowMs
-  standardHeaders: "draft-8", // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  handler: rateLimitHandler("booking"),
   message: {
     error: {
       code: "RATE_LIMIT_EXCEEDED",
@@ -14,10 +30,11 @@ const bookingRateLimiter = rateLimit({
 });
 
 const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 10, // Limit each IP to 10 requests per windowMs
-  standardHeaders: "draft-8", // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  handler: rateLimitHandler("auth"),
   message: {
     error: {
       code: "RATE_LIMIT_EXCEEDED",
@@ -27,10 +44,11 @@ const authRateLimiter = rateLimit({
 });
 
 const globalRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 300, // Limit each IP to 300 requests per windowMs
-  standardHeaders: "draft-8", // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  handler: rateLimitHandler("global"),
   message: {
     error: {
       code: "RATE_LIMIT_EXCEEDED",
