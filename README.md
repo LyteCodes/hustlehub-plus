@@ -1775,8 +1775,9 @@ docker run --rm \
 ```
 
 ### Notes 
-- All leaks are either from previous branches and have been rotated out alread, or Demo/Test data so not production keys.
+- All historical findings are from previous branches and have been rotated out, or are Demo/Test data and not production keys.
 - Share Note credentials were removed.
+- JWTs in the demo recording were redacted.
 
 ---
 
