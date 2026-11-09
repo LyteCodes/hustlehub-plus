@@ -36,29 +36,6 @@ Password:
 Password1!
 ```
 
-### Client Credentials 
-
-Username: 
-
-```
-connor@example.com
-```
-Password:
-```
-Password1!
-```
-
-### Freelancer Credentials 
-
-Username: 
-
-```
-jessica@example.com
-```
-Password:
-```
-Password1!
-```
 
 ### Demo Videos
 #### Part 1
