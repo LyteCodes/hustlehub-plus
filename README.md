@@ -17,6 +17,13 @@ Runn the following commands:
 - npm install
 - npm run dev
 
+
+compose docker:
+- Start containers : docker compose up --build
+- Stop containers : docker compose down
+
+Frontend website: https://localhost:3000
+
 The Following vredentials can be used:
 |connor@example.com|Password1!|Client|
 |jessica@example.com|Password1!|Freelancer|
@@ -43,7 +50,7 @@ See the HustleHub+ Part 1 Postman Demo [Video](https://youtu.be/PlD6tQwKoPI).
 #### Part 2
 See the HustleHub+ Part 2 Showcase [Video](https://www.youtube.com/watch?v=JFhXcax6Bbg).
 #### POE
-See the HustleHub+ POE Showcase **TODO: Make Showcase and link here as above**
+See the HustleHub+ POE Showcase [Video](https://youtu.be/RiETyGN2T60).
 
 ### Asciinema Demo
 ```sh
