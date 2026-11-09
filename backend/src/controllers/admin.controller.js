@@ -7,7 +7,7 @@ exports.getUsers = async (req, res, next) => {
   try {
     const { page, limit } = req.query;
 
-    const users = await User.find()
+    const users = await User.find().select("-password")
     .skip((page - 1) * limit)
     .limit(limit);
 

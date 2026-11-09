@@ -97,12 +97,12 @@ jobs:
 
       - name: Run Jest tests
         id: jest_tests
-        run: AUTH_RATE_LIMIT=100 BOOKING_RATE_LIMIT=100 npm run test:jest
+        run: AUTH_RATE_LIMIT=100 npm run test:jest
         continue-on-error: true
 
       - name: Start backend
         run: |
-          AUTH_RATE_LIMIT=100 BOOKING_RATE_LIMIT=100 node src/server.js > /tmp/hustlehub-backend.log 2>&1 &
+          AUTH_RATE_LIMIT=100 node src/server.js > /tmp/hustlehub-backend.log 2>&1 &
 
       - name: Wait for HTTPS backend
         run: |
