@@ -108,7 +108,7 @@ jobs:
       - name: Run Newman API integration tests
         id: newman_tests
         run: |
-          npx newman run \
+          AUTH_RATE_LIMIT=100 BOOKING_RATE_LIMIT=100 npx newman run \
             tests/postman/HustleHub-API.postman_collection.json \
             -e tests/postman/HustleHub-Local.postman_environment.json \
             --env-var "baseUrl=https://127.0.0.1:3000" \
