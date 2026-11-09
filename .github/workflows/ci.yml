@@ -42,6 +42,16 @@ jobs:
       - name: Audit backend dependencies
         run: npm audit --audit-level=high || true
 
+      - name: Generate temporary TLS certificate
+        run: |
+          mkdir -p secrets
+          openssl req -x509 -newkey rsa:2048 \
+            -keyout secrets/localhost-key.pem \
+            -out secrets/localhost-cert.pem \
+            -days 1 \
+            -nodes \
+            -subj "/CN=localhost"
+
       - name: Generate a throwaway JWT secret for this run
         run: echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
 
@@ -214,11 +224,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Create CI environment file
+        run: |
+          cat > backend/.env <<EOF
+          PORT=3000
+          NODE_ENV=production
+          JWT_SECRET=ci-test-secret
+          USE_HTTPS=false
+          CLIENT_ORIGIN=http://localhost:8080
+          EOF
+
       - name: Validate Docker Compose configuration
         run: docker compose config --quiet
 
       - name: Build Docker images
-        run: docker build -t insy7314-2026-hustlehub-plus-part2-st10286905-backend backend && docker build -t insy7314-2026-hustlehub-plus-part2-st10286905-frontend frontend
+        run: |
+          docker build \
+            -t insy7314-2026-hustlehub-plus-part2-st10286905-backend \
+            backend
+
+          docker build \
+            -t insy7314-2026-hustlehub-plus-part2-st10286905-frontend \
+            frontend
 
       - name: Scan backend image
         uses: aquasecurity/trivy-action@master
@@ -239,15 +266,18 @@ jobs:
   zap:
     name: OWASP ZAP API Scan
     runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: backend
+
     env:
       NODE_ENV: test
       PORT: 3000
       MONGO_URI: ${{ secrets.MONGO_URI }}
       USE_HTTPS: "true"
       CLIENT_ORIGIN: http://localhost:8080
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -261,6 +291,16 @@ jobs:
 
       - name: Install backend dependencies
         run: npm ci
+
+      - name: Generate temporary TLS certificate
+        run: |
+          mkdir -p secrets
+          openssl req -x509 -newkey rsa:2048 \
+            -keyout secrets/localhost-key.pem \
+            -out secrets/localhost-cert.pem \
+            -days 1 \
+            -nodes \
+            -subj "/CN=localhost"
 
       - name: Generate a throwaway JWT secret for this run
         run: echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
@@ -280,8 +320,10 @@ jobs:
               echo "Backend is ready"
               exit 0
             fi
+
             sleep 2
           done
+
           cat /tmp/hustlehub-zap-backend.log
           exit 1
 
