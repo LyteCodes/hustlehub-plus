@@ -58,6 +58,36 @@ jobs:
       - name: Initialise backend
         run: npm run init
 
+      - name: Create temporary CI admin
+        run: |
+          CI_ADMIN_EMAIL="admin-ci-${GITHUB_RUN_ID}@hustlehubplus.test"
+          CI_ADMIN_PASSWORD="$(openssl rand -hex 32)"
+          echo "CI_ADMIN_EMAIL=$CI_ADMIN_EMAIL" >> "$GITHUB_ENV"
+          echo "CI_ADMIN_PASSWORD=$CI_ADMIN_PASSWORD" >> "$GITHUB_ENV"
+
+          node - <<'NODE'
+          const mongoose = require("mongoose");
+          const User = require("./src/models/user");
+
+          (async () => {
+            await mongoose.connect(process.env.MONGO_URI);
+
+            await User.create({
+              name: "CI Admin",
+              email: process.env.CI_ADMIN_EMAIL,
+              password: process.env.CI_ADMIN_PASSWORD,
+              role: "admin",
+            });
+
+            console.log("Temporary CI admin created");
+            await mongoose.disconnect();
+          })().catch(async (error) => {
+            console.error(error);
+            await mongoose.disconnect().catch(() => {});
+            process.exit(1);
+          });
+          NODE
+
       - name: Run backend tests
         id: backend_tests
         run: npm test
@@ -70,7 +100,7 @@ jobs:
 
       - name: Start backend
         run: |
-          node src/server.js > /tmp/hustlehub-backend.log 2>&1 &
+          AUTH_RATE_LIMIT=100 node src/server.js > /tmp/hustlehub-backend.log 2>&1 &
           echo $! > /tmp/hustlehub-backend.pid
 
       - name: Wait for HTTPS backend
@@ -108,7 +138,7 @@ jobs:
       - name: Run Newman API integration tests
         id: newman_tests
         run: |
-          AUTH_RATE_LIMIT=100 BOOKING_RATE_LIMIT=100 npx newman run \
+          npx newman run \
             tests/postman/HustleHub-API.postman_collection.json \
             -e tests/postman/HustleHub-Local.postman_environment.json \
             --env-var "baseUrl=https://127.0.0.1:3000" \

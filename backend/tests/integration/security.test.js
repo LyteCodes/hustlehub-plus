@@ -113,3 +113,27 @@ describe("Security controls (KAN-07, KAN-08)", () => {
     assert.equal(res.status, 400);
   });
 });
+
+it("stores an XSS payload as plain text and serves it as JSON", async () => {
+    const email = `xss_${Date.now()}@hustlehub.co.za`;
+    // Random password, so the breached-password check (KAN-103.1) can't reject it
+    const password = `Xss-${crypto.randomUUID()}-Aa1!`;
+    await request("/api/auth/register", {
+      method: "POST",
+      body: { name: "XSS Test", email, password, role: "freelancer" },
+    });
+    const login = await request("/api/auth/login", { method: "POST", body: { email, password } });
+    const payload = '<img src=x onerror="alert(1)"><script>alert(2)</script>';
+
+    const res = await fetch(`${baseUrl}/api/gigs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...bearer(login.body.token) },
+      body: JSON.stringify({ title: "XSS check", category: "Writing", description: payload, rate: 100, durationHours: 1 }),
+    });
+    const body = await res.json();
+
+    assert.equal(res.status, 201);
+    assert.equal(body.gig.description, payload); // stored unchanged; escaping happens when it's rendered
+    assert.match(res.headers.get("content-type"), /application\/json/);
+    assert.equal(res.headers.get("x-content-type-options"), "nosniff"); // browsers won't treat it as HTML
+  });
