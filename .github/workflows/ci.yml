@@ -60,8 +60,10 @@ jobs:
 
       - name: Create temporary CI admin
         run: |
-          CI_ADMIN_EMAIL="admin-ci-${GITHUB_RUN_ID}@hustlehubplus.test"
-          CI_ADMIN_PASSWORD="$(openssl rand -hex 32)"
+          export CI_ADMIN_EMAIL="admin-ci-${GITHUB_RUN_ID}@hustlehubplus.test"
+          export CI_ADMIN_PASSWORD="$(openssl rand -hex 32)"
+
+          echo "::add-mask::$CI_ADMIN_PASSWORD"
           echo "CI_ADMIN_EMAIL=$CI_ADMIN_EMAIL" >> "$GITHUB_ENV"
           echo "CI_ADMIN_PASSWORD=$CI_ADMIN_PASSWORD" >> "$GITHUB_ENV"
 
