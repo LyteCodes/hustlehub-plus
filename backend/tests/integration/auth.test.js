@@ -59,7 +59,6 @@ describe("Auth Integration Tests", () => {
   }
 
   before(async () => {
-    await UserModel.deleteMany({});
     server = http.createServer(app);
     await new Promise((resolve) => server.listen(0, resolve));
     baseUrl = `http://127.0.0.1:${server.address().port}`;
