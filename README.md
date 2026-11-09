@@ -60,8 +60,13 @@ Password:
 Password1!
 ```
 
-### YouTube Demo Video
+### Demo Videos
+#### Part 1
 See the HustleHub+ Part 1 Postman Demo [Video](https://youtu.be/PlD6tQwKoPI).
+#### Part 2
+See the HustleHub+ Part 2 Showcase [Video](https://www.youtube.com/watch?v=JFhXcax6Bbg).
+#### POE
+See the HustleHub+ POE Showcase **TODO: Make Showcase and link here as above**
 
 ### Asciinema Demo
 ```sh
