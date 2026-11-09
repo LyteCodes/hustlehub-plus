@@ -334,7 +334,7 @@ jobs:
           format: openapi
           allow_issue_writing: false
           fail_action: true
-          cmd_options: "-I -k"
+          cmd_options: "-I"
 
       - name: Upload ZAP backend log
         if: always()
