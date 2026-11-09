@@ -81,7 +81,6 @@ function GigForm({ editing, gigId, initial }) {
             description: form.description.trim(),
             rate: Number(form.price),
             durationHours: Number(form.duration),
-            status: form.status === 'active' ? 'Active' : 'Paused',
         }
 
         try {
