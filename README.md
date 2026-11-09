@@ -1207,6 +1207,8 @@ Swagger has been incorporated into the API project, contextualizing the requests
 At `c28fbaa`: ran npm audit, showed 42 vulnerabilities: <img width="1920" height="967" alt="npm_audit_Screenshot From 2026-11-08 18-37-26" src="https://github.com/user-attachments/assets/7f9240ec-2057-4dd7-b214-b51d076e638d" />  
 At `3066caa`: after running npm audit fix, showed 40 vulnerabilities <img width="1920" height="967" alt="npm_audit_fix_Screenshot From 2026-11-08 18-38-31" src="https://github.com/user-attachments/assets/c201fb38-8557-4204-b7a1-6cb69d56349c" />
 
+At `6e4cfe9` pinned github actions against `git ls-remote https://github.com/actions/checkout refs/tags/v4` and `git ls-remote https://github.com/actions/setup-node refs/tags/v4`, with dependabot added at `9ee67e7` to hopefully automatically update the pinned tag SHAs weekly.
+
 ---
 
 # References 
