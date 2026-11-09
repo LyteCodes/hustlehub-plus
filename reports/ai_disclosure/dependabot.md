@@ -1,0 +1,8 @@
+Disclosure of AI Usage in my Assessment:
+
+Sections: SHA-pinned GitHub Actions (PR #61): `.github/workflows/ci.yml` (the `uses:` lines for `actions/checkout` and `actions/setup-node`), README.md section describing the yet another dependabot addition to the project.
+Name of AI tool(s) used: Claude Code (Claude Opus 5.5, Anthropic)
+Purpose/intention behind use: The AI wrote the step-by-step guide I followed for this card. It gave me the `dependabot.yml` to copy and paste, plus a one-line `sed` command that replaced `@v4` with full commit SHAs. I pasted both in as given. The guide didn't say where the SHAs came from, why a tag like `@v4` is a supply-chain risk, or that Dependabot would keep the pins up to date. I had to drag that out of it over several questions: what the `sed` does, where the advice is sourced, whether the hashes had actually been reviewed, and how to look a SHA up myself. Only after that did it explain `git ls-remote https://github.com/actions/<repo> refs/tags/v4.4.0` (still wrong, I just used v4 because that's what we were running actions/checkout and actions/set-up-node against when I pinned it). I ran that myself and both SHAs matched the v4.4.0 tags (including just `refs/tags/v4`). When asked, it also admitted that it had only checked that the SHAs matched the tags, not reviewed the code, and that v4 is two major versions behind the latest. I put the lookup commands in the commit body (6e4cfe9) so the team can check or update a pin without the AI.
+Date(s) in which generative AI was used: 2026-11-08 to 2026-11-09
+A link or screenshot to the actual generative AI chat: <img width="864" height="303" alt="image" src="https://github.com/user-attachments/assets/0965082f-3ccb-455a-a820-ab7fa577c184" /> 
+
