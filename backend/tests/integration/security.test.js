@@ -112,9 +112,8 @@ describe("Security controls (KAN-07, KAN-08)", () => {
     });
     assert.equal(res.status, 400);
   });
-});
 
-it("stores an XSS payload as plain text and serves it as JSON", async () => {
+  it("stores an XSS payload as plain text and serves it as JSON", async () => {
     const email = `xss_${Date.now()}@hustlehub.co.za`;
     // Random password, so the breached-password check (KAN-103.1) can't reject it
     const password = `Xss-${crypto.randomUUID()}-Aa1!`;
@@ -137,3 +136,4 @@ it("stores an XSS payload as plain text and serves it as JSON", async () => {
     assert.match(res.headers.get("content-type"), /application\/json/);
     assert.equal(res.headers.get("x-content-type-options"), "nosniff"); // browsers won't treat it as HTML
   });
+});
