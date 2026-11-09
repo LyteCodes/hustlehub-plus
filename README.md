@@ -69,10 +69,10 @@ cd backend # ensure that you're in the backend dir
 npm install && npm run test # install dependencies and run tests
 npm run demo # demonstrate tests, run postman collection, etc. 
 ```
-![CLI based demonstration video](asciinema/demo.gif)
+![CLI based demonstration video](</asciinema/demo.gif>)
 
 ## Team Member Details
-See [TEAM.md](TEAM.md) for team member details including student and group numbers.
+See [TEAM.md](</TEAM.md>) for team member details including student and group numbers.
 
 ## HustleHub+ User Matrix
 
@@ -1360,9 +1360,9 @@ Swagger has been incorporated into the API project, contextualizing the requests
 
 # Screenshots of API responses
 
-![Postman sends POST /api/auth/login with a wrong password; the server responds 401 Unauthorized with an INVALID_CREDENTIALS error and the message "Invalid email or password."](<backend/tests/postman/Screenshots/Login - Invalid Credentials.png>)
-![Postman sends POST /api/auth/login with valid credentials; the server responds 200 OK with a signed JWT access token and a user object containing id, email, and role.](<backend/tests/postman/Screenshots/Login - Valid.png>)
-![Postman sends GET /api/auth/me with an invalid Bearer token; the server responds 401 Unauthorized with an INVALID_TOKEN error.](<backend/tests/postman/Screenshots/Me - Invalid Token.png>) ![Postman sends GET /api/auth/me without an authorization token; the server responds 401 Unauthorized with an UNAUTHORIZED error and the message "Authentication token missing or malformed."](<backend/tests/postman/Screenshots/Me - No Token.png>) ![Postman sends GET /api/auth/me with a valid JWT Bearer token; the server responds 200 OK with the authenticated user's profile.](<backend/tests/postman/Screenshots/Me - Valid Token.png>) ![Postman sends POST /api/auth/register with an already-registered email address; the server responds 400 Bad Request with a structured VALIDATION_ERROR object.](<backend/tests/postman/Screenshots/Register - Duplicate Email.png>) ![Postman sends POST /api/auth/register with the malformed email "not-an-email"; the server responds 400 Bad Request with a VALIDATION_ERROR and the message "Email must be a valid email address."](<backend/tests/postman/Screenshots/Register - Invalid Email.png>) ![Postman sends POST /api/auth/register without an email field; the server responds 400 Bad Request with a VALIDATION_ERROR and the message "Email is required."](<backend/tests/postman/Screenshots/Register - Missing Email.png>) ![Postman sends POST /api/auth/register with a valid email, password, and role; the server responds 201 Created with a success message and the new user object.](<backend/tests/postman/Screenshots/Register - Successful Registration.png>) ![Postman sends POST /api/auth/register with an unsupported "username" field; the server responds 400 Bad Request with an UNKNOWN_FIELDS error indicating the field is not allowed.](<backend/tests/postman/Screenshots/Register - Unknown Field.png>) ![Postman sends POST /api/auth/register with the weak password "123"; the server responds 400 Bad Request with a VALIDATION_ERROR and the message "Password must be complex and between 8 to 128 characters."](<backend/tests/postman/Screenshots/Register - Weak Password.png>)
+![Postman sends POST /api/auth/login with a wrong password; the server responds 401 Unauthorized with an INVALID_CREDENTIALS error and the message "Invalid email or password."](</backend/tests/postman/Screenshots/Login - Invalid Credentials.png>)
+![Postman sends POST /api/auth/login with valid credentials; the server responds 200 OK with a signed JWT access token and a user object containing id, email, and role.](</backend/tests/postman/Screenshots/Login - Valid.png>)
+![Postman sends GET /api/auth/me with an invalid Bearer token; the server responds 401 Unauthorized with an INVALID_TOKEN error.](</backend/tests/postman/Screenshots/Me - Invalid Token.png>) ![Postman sends GET /api/auth/me without an authorization token; the server responds 401 Unauthorized with an UNAUTHORIZED error and the message "Authentication token missing or malformed."](</backend/tests/postman/Screenshots/Me - No Token.png>) ![Postman sends GET /api/auth/me with a valid JWT Bearer token; the server responds 200 OK with the authenticated user's profile.](</backend/tests/postman/Screenshots/Me - Valid Token.png>) ![Postman sends POST /api/auth/register with an already-registered email address; the server responds 400 Bad Request with a structured VALIDATION_ERROR object.](</backend/tests/postman/Screenshots/Register - Duplicate Email.png>) ![Postman sends POST /api/auth/register with the malformed email "not-an-email"; the server responds 400 Bad Request with a VALIDATION_ERROR and the message "Email must be a valid email address."](</backend/tests/postman/Screenshots/Register - Invalid Email.png>) ![Postman sends POST /api/auth/register without an email field; the server responds 400 Bad Request with a VALIDATION_ERROR and the message "Email is required."](</backend/tests/postman/Screenshots/Register - Missing Email.png>) ![Postman sends POST /api/auth/register with a valid email, password, and role; the server responds 201 Created with a success message and the new user object.](</backend/tests/postman/Screenshots/Register - Successful Registration.png>) ![Postman sends POST /api/auth/register with an unsupported "username" field; the server responds 400 Bad Request with an UNKNOWN_FIELDS error indicating the field is not allowed.](</backend/tests/postman/Screenshots/Register - Unknown Field.png>) ![Postman sends POST /api/auth/register with the weak password "123"; the server responds 400 Bad Request with a VALIDATION_ERROR and the message "Password must be complex and between 8 to 128 characters."](</backend/tests/postman/Screenshots/Register - Weak Password.png>)
 
 
 # Logging and Observability
@@ -1780,6 +1780,14 @@ docker run --rm \
 - All historical findings are from previous branches and have been rotated out, or are Demo/Test data and not production keys.
 - Share Note credentials were removed.
 - JWTs in the demo recording were redacted.
+
+# Reports
+- [Post Part 1 Audit & Report](</reports/part1_post_audit_report.md>)
+- [Part 2  Report - ST10297849](</reports/ST10297849_Report.md>)
+- [Part 2 Report - ST10322521 ](</reports/ST10322521_Report.md>)
+
+# AI Disclosure
+See documented markdown entries disclosing AI usage in [AI Disclosure](</reports/ai_disclosure>).
 
 ---
 
