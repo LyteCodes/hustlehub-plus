@@ -25,6 +25,15 @@ exports.register = async (req, res, next) => {
     const { name, email, password, role } = req.body;
     const assignableRoles = ['freelancer', 'client'];
 
+    if (typeof email !== "string") {
+      return res.status(400).json({
+        error: {
+          code: "INVALID_EMAIL",
+          message: "Email address must be a string.",
+        },
+      });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser)
       return res.status(409).json({
