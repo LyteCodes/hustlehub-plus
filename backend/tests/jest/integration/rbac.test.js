@@ -1,6 +1,8 @@
 'use strict';
 
-process.env.JWT_SECRET = 'jest-rbac-test-secret-0123456789abcdef';
+const crypto = require('crypto');
+
+process.env.JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 process.env.NODE_ENV   = 'test';
 
 jest.mock('../../../src/config/db', () => jest.fn());
@@ -15,7 +17,7 @@ const request  = require('supertest');
 const mongoose = require('mongoose');
 const jwt      = require('jsonwebtoken');
 
-const SECRET = 'jest-rbac-test-secret-0123456789abcdef';
+const SECRET = process.env.JWT_SECRET;
 
 function makeToken(role) {
   return jwt.sign(

@@ -10,3 +10,6 @@ Thumbs.db
 
 # Ignore main.pdf
 main.pdf
+
+# Obsidian Share Note credentials/config
+.obsidian.default/plugins/share-note/data.json
