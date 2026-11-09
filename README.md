@@ -1789,6 +1789,53 @@ docker run --rm \
 # AI Disclosure
 See documented markdown entries disclosing AI usage in [AI Disclosure](</reports/ai_disclosure>).
 
+# Security Review (OWASP Top 10:2025)
+
+This review maps each OWASP Top 10:2025 category [29] to the threat it poses to HustleHub+, the control we built, the pull request that merged it into `test`, and the test or evidence that shows it works. It was checked against the code on `test` at commit `e46a615` (9 Nov 2026). Controls that came from Part 1 or were committed directly (not through a pull request) are marked with their commit hash.
+
+## Threats, controls and evidence
+
+| OWASP 2025 | Threat to HustleHub+ | Control | Merged in | Evidence |
+| --- | --- | --- | --- | --- |
+| A01 Broken Access Control | A user reads or changes another user's gigs or bookings; a client acts as a freelancer or admin | Deny by default: every non-public route needs `authenticate`, then `authorizeRoles` returns 403 for the wrong role [30]. Gig update and delete queries are scoped to the owner (`{ _id, freelancer: req.user.id }`); booking queries are scoped to the client or freelancer on the booking. Registration only accepts the `client` and `freelancer` roles, so nobody can self-register as admin | #6 (gig ownership), #45 (KAN-112 owner-scoped queries), #53 (booking scoping), `04e1e99` (role allow-list) | Jest `rbac.test.js`, `ownership.test.js` (#38); `security.test.js` "returns 403 for the wrong role" (#43) |
+| A02 Security Misconfiguration | Clickjacking, MIME sniffing, injected scripts loading, framework fingerprinting | Helmet with a strict API CSP (`default-src 'none'`, `frame-ancestors 'none'`) [35]; nginx sends its own CSP, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy` and `Permissions-Policy` for the frontend [34]; CORS limited to the one client origin; JSON bodies capped at 10 kB | #50 (KAN-10/126 CSP), #34 (nginx headers), Part 1 `023c7c3` (Helmet, body limit) | Jest `headers.test.js` (#38): `nosniff`, `X-Frame-Options`, no `X-Powered-By`, `Cache-Control: no-store` |
+| A03 Software Supply Chain Failures | A compromised npm package or GitHub Action runs in our build | Dependabot watches npm, Docker and GitHub Actions and opens update PRs [42]; every action is pinned to a full commit SHA instead of a movable tag such as `@v4` [41] | #61 (KAN-103.3) | `.github/dependabot.yml`; `ci.yml` `uses:` lines end in a 40-character SHA with a `# v4.4.0` comment |
+| A04 Cryptographic Failures | Stolen password hashes are cracked; tokens are forged; traffic is read in transit | bcrypt with cost 12 (OWASP: 10 or more for bcrypt) [36]; the server refuses to start unless `JWT_SECRET` is at least 32 bytes, and the hard-coded fallback secret was removed; the API is served over HTTPS | #2 (bcrypt), #43 (KAN-07 secret), Part 1 `b5cadf9` (HTTPS) | `security.test.js` rejects a token signed with another key (#43) |
+| A05 Injection | NoSQL operator injection (`{"$ne": null}`) bypasses login; stored XSS in gig text | Mongoose `sanitizeFilter` wraps any `$` operator in user input in `$eq` [32]; express-validator on the write routes, plus `rejectUnknownFields`, an allow-list of body fields [31]; route ids must be valid ObjectIds; React escapes output, and the one place that renders HTML goes through DOMPurify [33] | #49 (KAN-08 `sanitizeFilter`, `validateIdParam`), Part 1 `b5cadf9` (allow-list), `03b7540` (DOMPurify helper) | `security.test.js`: `{"$ne": null}` login → 400, malformed id → 400 (#43); Vitest `csp-compat.test.js`: no inline scripts, `eval` or inline handlers |
+| A06 Insecure Design | Credential stuffing, booking spam, financial data cached by a shared browser | Rate limits: 10 sign-ups or logins and 10 bookings per IP per 15 minutes, 300 requests overall [40]; the income and tax summary is sent with `Cache-Control: no-store` | #29 (KAN-09), #35 (KAN-101) | Postman "POST /bookings - Rate Limit Exceeded" → 429; `headers.test.js` `no-store` |
+| A07 Authentication Failures | Forged or `alg: none` tokens; users choosing passwords already leaked in breaches | `jwt.verify` only accepts HS256, which rejects `alg: none` [37]; the token's `sub` and `role` must have the expected shape; every 401 has the same generic body. **Own security feature:** registration checks the password against Have I Been Pwned using k-anonymity, so only the first 5 characters of its SHA-1 hash leave the server [39], as NIST SP 800-63B-4 requires (a blocklist of compromised passwords) [38] | #43 (KAN-07), #39 (KAN-103.1) | `security.test.js`: missing, wrong-key, `alg: none` and expired tokens → 401 (#43); registering with `Password1!` → `BREACHED_PASSWORD` |
+| A08 Software or Data Integrity Failures | CI runs code that changed after we reviewed it | SHA-pinned actions (see A03): a tag can be moved to new code, a commit SHA can't [41] | #61 | Commit `6e4cfe9` records the `git ls-remote` command used to look each SHA up |
+| A09 Security Logging and Alerting Failures | Attacks go unnoticed | Structured JSON logs shipped to Grafana Cloud over OTLP [44]; security events are logged with an `event` field: `security.access_denied`, `security.rate_limited`, failed logins, `auth.register.breached_password` | #37 (KAN-104), #39 | Grafana Cloud log explorer (screenshot still to add, KAN-116) |
+| A10 Mishandling of Exceptional Conditions | Stack traces or internal errors leak to the client | One central error handler: logs the details server-side and returns a generic 500 body [46]; unknown routes get a 404 handler | Part 1 `b5cadf9` | `security.test.js`: malformed id gives 400, not 500 |
+
+## Findings fixed during Part 3
+
+| Finding | Fix | Merged in |
+| --- | --- | --- |
+| Real Atlas connection string with password in `backend/.env.example` | Replaced with a placeholder; the password had already been rotated. Git history was **not** rewritten, so the old (dead) password is still in old commits [47] | #43 |
+| Hard-coded fallback JWT secret in `config/index.js` | Removed; the server won't start without a secret of at least 32 bytes | #43 |
+| `jwt.verify` didn't pin the algorithm | Pinned to HS256 [37] | #43 |
+| A note.sx API key committed in the old report template | File deleted; the key is still in history, so it must be revoked [47] | #63 |
+| JWTs visible in the asciinema demo recording | Redacted | #63 |
+| CI deleted every user in the Atlas database on each run (#60 pointed CI at Atlas; a test ran `UserModel.deleteMany({})`) | The deleting test was removed | #64 |
+| Registration accepted `role: admin` | Only `client` and `freelancer` are accepted | `04e1e99` |
+
+## Residual risks
+
+| Risk | Why it remains | Mitigation / next step |
+| --- | --- | --- |
+| `GET /api/admin/users` returns every user's bcrypt password hash | Found on 9 Nov by the Postman collection once its admin test could run; fix (`.select("-password")`) not merged yet | Merge the one-line fix; bcrypt cost 12 slows cracking meanwhile [36] |
+| No automated test stores an XSS payload and checks it renders as text | Only static checks (`csp-compat.test.js`) and the defences above | Add a Vitest test that renders `<img src=x onerror=alert(1)>` in a gig |
+| DOMPurify 3.4.16 has a critical advisory (GHSA-cg2g-xh64-v4q7 and two others); follow-redirects has a high one | `npm audit` isn't in CI yet | Upgrade to DOMPurify 3.4.17; add `npm audit`, Gitleaks and Trivy to CI (KAN-107) |
+| Minimum password length is 8 | NIST SP 800-63B-4 says 15 for single-factor passwords (8 only with MFA) [38] | Raise to 15, or add MFA |
+| The breached-password check fails open | If Have I Been Pwned is unreachable, registration continues (logged as `auth.register.hibp_error`) | Deliberate (availability); add a request timeout |
+| Login-failure logs record the raw email address | OWASP says to consider pseudonymising personal data such as email addresses in logs [45] | Log a hash of the email instead |
+| `POST /auth/register` returns 409 for an existing email | Lets an attacker check which emails have accounts | Same response for new and existing emails |
+| In Docker, the browser reaches nginx over plain HTTP (port 8080) | Only nginx → backend uses HTTPS | Serve HTTPS from nginx |
+| CI still writes test users to the Atlas database (`secrets.MONGO_URI`) | Fixed only the deleting test (#64) | Use a throwaway `mongo:8` service in CI |
+| A `Content-Type`-less request crashes validation with a 500 | `Object.keys(req.body)` on undefined | Fix is on Lyle's `KAN-107-github-actions` branch (`req.body ?? {}`) |
+| Containers: backend runs as `node`, nginx image is unprivileged | – | Already follows "set a user" [43] |
+
 ---
 
 
@@ -1845,4 +1892,41 @@ See documented markdown entries disclosing AI usage in [AI Disclosure](</reports
 
 [[25] Auth0, ‘JSON Web Tokens’, Auth0 Docs. Accessed: Sep. 07, 2026. [Online]. Available: https://auth0.com/docs/secure/tokens/json-web-tokens](https://www.zotero.org/google-docs/?HPw47s) 
 
+[29] OWASP Foundation, ‘Introduction: OWASP Top 10:2025’. Accessed: Nov. 09, 2026. [Online]. Available: https://top10.owasp.org/2025/0x00_2025-Introduction/
+
+[30] OWASP Foundation, ‘Authorization Cheat Sheet’, OWASP Cheat Sheet Series. Accessed: Nov. 09, 2026. [Online]. Available: https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html
+
+[31] OWASP Foundation, ‘Mass Assignment Cheat Sheet’, OWASP Cheat Sheet Series. Accessed: Nov. 09, 2026. [Online]. Available: https://cheatsheetseries.owasp.org/cheatsheets/Mass_Assignment_Cheat_Sheet.html
+
+[32] Mongoose, ‘Mongoose.prototype.sanitizeFilter()’, Mongoose API. Accessed: Nov. 09, 2026. [Online]. Available: https://mongoosejs.com/docs/api/mongoose.html#Mongoose.prototype.sanitizeFilter()
+
+[33] OWASP Foundation, ‘Cross Site Scripting Prevention Cheat Sheet’, OWASP Cheat Sheet Series. Accessed: Nov. 09, 2026. [Online]. Available: https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+
+[34] OWASP Foundation, ‘Content Security Policy Cheat Sheet’, OWASP Cheat Sheet Series. Accessed: Nov. 09, 2026. [Online]. Available: https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html
+
+[35] Helmet.js, ‘Helmet’. Accessed: Nov. 09, 2026. [Online]. Available: https://helmet.js.org/
+
+[36] OWASP Foundation, ‘Password Storage Cheat Sheet’, OWASP Cheat Sheet Series. Accessed: Nov. 09, 2026. [Online]. Available: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+
+[37] Y. Sheffer, D. Hardt and M. B. Jones, ‘JSON Web Token Best Current Practices’, RFC 8725, IETF, 2020. Accessed: Nov. 09, 2026. [Online]. Available: https://www.rfc-editor.org/rfc/rfc8725
+
+[38] National Institute of Standards and Technology, ‘Digital Identity Guidelines: Authentication and Authenticator Management’, NIST SP 800-63B-4, 2025. Accessed: Nov. 09, 2026. [Online]. Available: https://pages.nist.gov/800-63-4/sp800-63b.html
+
+[39] T. Hunt, ‘Pwned Passwords’, Have I Been Pwned. Accessed: Nov. 09, 2026. [Online]. Available: https://haveibeenpwned.com/Passwords
+
+[40] express-rate-limit, ‘Configuration’. Accessed: Nov. 09, 2026. [Online]. Available: https://express-rate-limit.mintlify.app/reference/configuration
+
+[41] GitHub, ‘Secure use reference’, GitHub Docs. Accessed: Nov. 09, 2026. [Online]. Available: https://docs.github.com/en/actions/reference/security/secure-use
+
+[42] GitHub, ‘Dependabot security updates’, GitHub Docs. Accessed: Nov. 09, 2026. [Online]. Available: https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-security-updates
+
+[43] OWASP Foundation, ‘Docker Security Cheat Sheet’, OWASP Cheat Sheet Series. Accessed: Nov. 09, 2026. [Online]. Available: https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html
+
+[44] Grafana Labs, ‘Send data using OpenTelemetry Protocol (OTLP)’, Grafana Cloud documentation. Accessed: Nov. 09, 2026. [Online]. Available: https://grafana.com/docs/grafana-cloud/send-data/otlp/send-data-otlp/
+
+[45] OWASP Foundation, ‘Logging Cheat Sheet’, OWASP Cheat Sheet Series. Accessed: Nov. 09, 2026. [Online]. Available: https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html
+
+[46] OWASP Foundation, ‘Error Handling Cheat Sheet’, OWASP Cheat Sheet Series. Accessed: Nov. 09, 2026. [Online]. Available: https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html
+
+[47] OWASP Foundation, ‘Secrets Management Cheat Sheet’, OWASP Cheat Sheet Series. Accessed: Nov. 09, 2026. [Online]. Available: https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html
 [[26] GeeksforGeeks, ‘Understanding JWT Authentication in APIs’, GeeksforGeeks. Accessed: Sep. 07, 2026. [Online]. Available: https://www.geeksforgeeks.org/web-tech/understanding-jwt-authentication-in-apis/](https://www.zotero.org/google-docs/?HPw47s)
