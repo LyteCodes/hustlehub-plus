@@ -1,5 +1,5 @@
 {
-    "info":{
+    "info": {
         "name": "HustleHub Auth API",
         "description": "Collection of API endpoints for HustleHub authentication",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -426,6 +426,153 @@
             "name": "Protected Routes",
             "item": [
                 {
+                    "name": "Setup - Register Client",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Newman Test Client\",\n    \"email\": \"{{clientEmail}}\",\n    \"password\": \"{{clientPassword}}\",\n    \"role\": \"client\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/register",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "register"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "pm.environment.set(",
+                                    "    \"clientEmail\",",
+                                    "    `newman_client_${Date.now()}@hustlehub.com`",
+                                    ");",
+                                    "",
+                                    "pm.environment.set(",
+                                    "    \"clientPassword\",",
+                                    "    \"NewmanTest#2026\"",
+                                    ");"
+                                ]
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status is 201\", function () {",
+                                    "    pm.response.to.have.status(201);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Response is JSON\", function () {",
+                                    "    pm.response.to.be.json;",
+                                    "});",
+                                    "",
+                                    "const json = pm.response.json();",
+                                    "",
+                                    "pm.test(\"Registration succeeded\", function () {",
+                                    "    pm.expect(json.message).to.equal(\"User successfully registered.\");",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Client was created\", function () {",
+                                    "    pm.expect(json.user).to.have.property(\"id\");",
+                                    "    pm.expect(json.user.email).to.equal(",
+                                    "        pm.environment.get(\"clientEmail\")",
+                                    "    );",
+                                    "    pm.expect(json.user.role).to.equal(\"client\");",
+                                    "});",
+                                    "",
+                                    "pm.environment.set(\"clientId\", json.user.id);"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Setup - Login Client",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{clientEmail}}\",\n    \"password\": \"{{clientPassword}}\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Response is JSON\", function () {",
+                                    "    pm.response.to.be.json;",
+                                    "});",
+                                    "",
+                                    "const json = pm.response.json();",
+                                    "",
+                                    "pm.test(\"Login succeeded\", function () {",
+                                    "    pm.expect(json.message).to.equal(\"Login successful.\");",
+                                    "});",
+                                    "",
+                                    "pm.test(\"JWT was returned\", function () {",
+                                    "    pm.expect(json.token).to.be.a(\"string\").and.not.empty;",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Correct client account logged in\", function () {",
+                                    "    pm.expect(json.user.email).to.equal(",
+                                    "        pm.environment.get(\"clientEmail\")",
+                                    "    );",
+                                    "    pm.expect(json.user.role).to.equal(\"client\");",
+                                    "});",
+                                    "",
+                                    "pm.environment.set(\"clientToken\", json.token);"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
                     "name": "GET /me - No Token",
                     "request": {
                         "method": "GET",
@@ -494,8 +641,8 @@
                                     "",
                                     "const json = pm.response.json();",
                                     "",
-                                    "pm.test(\"Returns INVALID_TOKEN\", function () {",
-                                    "    pm.expect(json.error.code).to.equal('INVALID_TOKEN');",
+                                    "pm.test(\"Returns UNAUTHORIZED\", function () {",
+                                    "    pm.expect(json.error.code).to.equal('UNAUTHORIZED');",
                                     "});"
                                 ]
                             }
@@ -600,7 +747,7 @@
                                     "});",
                                     "",
                                     "pm.test(\"Error message is correct\", function () {",
-                                    "    pm.expect(json.error.message).to.equal('Authentication token missing or malformed.');",
+                                    "    pm.expect(json.error.message).to.equal('Authentication required.');",
                                     "});",
                                     "",
                                     "pm.test(\"No user data is exposed\", function () {",
@@ -662,9 +809,9 @@
                                     "",
                                     "const json = pm.response.json();",
                                     "",
-                                    "pm.test(\"Error message is 'Access Denied'\", function () {",
+                                    "pm.test(\"Error message is 'FORBIDDEN'\", function () {",
                                     "    pm.expect(json).to.have.property('error');",
-                                    "    pm.expect(json.error).to.equal('Access Denied');",
+                                    "    pm.expect(json.error).to.have.property('code', 'FORBIDDEN');",
                                     "});",
                                     "",
                                     "pm.test(\"No user data is exposed\", function () {",
@@ -686,7 +833,7 @@
                         "header": [
                             {
                                 "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "value": "Bearer {{adminToken}}"
                             }
                         ],
                         "url": {
@@ -810,7 +957,7 @@
                                     "});",
                                     "",
                                     "pm.test(\"Error message is correct\", function () {",
-                                    "    pm.expect(json.error.message).to.equal('Authentication token missing or malformed.');",
+                                    "    pm.expect(json.error.message).to.equal('Authentication required.');",
                                     "});",
                                     "",
                                     "pm.test(\"No gig data is exposed\", function () {",
@@ -871,9 +1018,9 @@
                                     "",
                                     "const json = pm.response.json();",
                                     "",
-                                    "pm.test(\"Error message is 'Access denied'\", function () {",
+                                    "pm.test(\"Error message is 'FORBIDDEN'\", function () {",
                                     "    pm.expect(json).to.have.property('error');",
-                                    "    pm.expect(json.error).to.equal('Access denied');",
+                                    "    pm.expect(json.error).to.have.property('code', 'FORBIDDEN');",
                                     "});",
                                     "",
                                     "pm.test(\"No gig data is exposed\", function () {",
@@ -894,7 +1041,7 @@
                         "header": [
                             {
                                 "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "value": "Bearer {{adminToken}}"
                             }
                         ],
                         "url": {
@@ -1017,7 +1164,7 @@
                                     "});",
                                     "",
                                     "pm.test(\"Error message is correct\", function () {",
-                                    "    pm.expect(json.error.message).to.equal('Authentication token missing or malformed.');",
+                                    "    pm.expect(json.error.message).to.equal('Authentication required.');",
                                     "});",
                                     "",
                                     "pm.test(\"No booking data is exposed\", function () {",
@@ -1078,9 +1225,9 @@
                                     "",
                                     "const json = pm.response.json();",
                                     "",
-                                    "pm.test(\"Error message is 'Access denied'\", function () {",
+                                    "pm.test(\"Error message is 'FORBIDDEN'\", function () {",
                                     "    pm.expect(json).to.have.property('error');",
-                                    "    pm.expect(json.error).to.equal('Access denied');",
+                                    "    pm.expect(json.error).to.have.property('code', 'FORBIDDEN');",
                                     "});",
                                     "",
                                     "pm.test(\"No booking data is exposed\", function () {",
@@ -1101,7 +1248,7 @@
                         "header": [
                             {
                                 "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "value": "Bearer {{adminToken}}"
                             }
                         ],
                         "url": {
@@ -1221,7 +1368,7 @@
                                     "});",
                                     "",
                                     "pm.test(\"Error message is correct\", function () {",
-                                    "    pm.expect(json.error.message).to.equal('Authentication token missing or malformed.');",
+                                    "    pm.expect(json.error.message).to.equal('Authentication required.');",
                                     "});",
                                     "",
                                     "pm.test(\"No transaction data is exposed\", function () {",
@@ -1282,9 +1429,9 @@
                                     "",
                                     "const json = pm.response.json();",
                                     "",
-                                    "pm.test(\"Error message is 'Access denied'\", function () {",
+                                    "pm.test(\"Error message is 'FORBIDDEN'\", function () {",
                                     "    pm.expect(json).to.have.property('error');",
-                                    "    pm.expect(json.error).to.equal('Access denied');",
+                                    "    pm.expect(json.error).to.have.property('code', 'FORBIDDEN');",
                                     "});",
                                     "",
                                     "pm.test(\"No transaction data is exposed\", function () {",
@@ -1305,7 +1452,7 @@
                         "header": [
                             {
                                 "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "value": "Bearer {{adminToken}}"
                             }
                         ],
                         "url": {
@@ -1417,7 +1564,7 @@
                                     "});",
                                     "",
                                     "pm.test(\"Error message is correct\", function () {",
-                                    "    pm.expect(json.error.message).to.equal('Authentication token missing or malformed.');",
+                                    "    pm.expect(json.error.message).to.equal('Authentication required.');",
                                     "});",
                                     "",
                                     "pm.test(\"No stats data is exposed\", function () {",
@@ -1471,9 +1618,9 @@
                                     "",
                                     "const json = pm.response.json();",
                                     "",
-                                    "pm.test(\"Error message is 'Access denied'\", function () {",
+                                    "pm.test(\"Error message is 'FORBIDDEN'\", function () {",
                                     "    pm.expect(json).to.have.property('error');",
-                                    "    pm.expect(json.error).to.equal('Access denied');",
+                                    "    pm.expect(json.error).to.have.property('code', 'FORBIDDEN');",
                                     "});",
                                     "",
                                     "pm.test(\"No stats data is exposed\", function () {",
@@ -1497,7 +1644,7 @@
                         "header": [
                             {
                                 "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "value": "Bearer {{adminToken}}"
                             }
                         ],
                         "url": {
@@ -1603,7 +1750,7 @@
                                     "});",
                                     "",
                                     "pm.test(\"Error message is correct\", function () {",
-                                    "    pm.expect(json.error.message).to.equal('Authentication token missing or malformed.');",
+                                    "    pm.expect(json.error.message).to.equal('Authentication required.');",
                                     "});",
                                     "",
                                     "pm.test(\"No gig was created\", function () {",
@@ -1624,7 +1771,7 @@
                         "header": [
                             {
                                 "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "value": "Bearer {{clientToken}}"
                             },
                             {
                                 "key": "Content-Type",
@@ -1666,9 +1813,9 @@
                                     "",
                                     "const json = pm.response.json();",
                                     "",
-                                    "pm.test(\"Error message is 'Access denied'\", function () {",
+                                    "pm.test(\"Error message is 'FORBIDDEN'\", function () {",
                                     "    pm.expect(json).to.have.property('error');",
-                                    "    pm.expect(json.error).to.equal('Access denied');",
+                                    "    pm.expect(json.error).to.have.property('code', 'FORBIDDEN');",
                                     "});",
                                     "",
                                     "pm.test(\"No gig was created\", function () {",
@@ -1811,7 +1958,7 @@
                                     "});",
                                     "",
                                     "pm.test(\"Error message is correct\", function () {",
-                                    "    pm.expect(json.error.message).to.equal('Authentication token missing or malformed.');",
+                                    "    pm.expect(json.error.message).to.equal('Authentication required.');",
                                     "});",
                                     "",
                                     "pm.test(\"No gig data is exposed\", function () {",
@@ -1832,7 +1979,7 @@
                         "header": [
                             {
                                 "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "value": "Bearer {{clientToken}}"
                             }
                         ],
                         "url": {
@@ -1862,9 +2009,9 @@
                                     "",
                                     "const json = pm.response.json();",
                                     "",
-                                    "pm.test(\"Error message is 'Access denied'\", function () {",
+                                    "pm.test(\"Error message is 'FORBIDDEN'\", function () {",
                                     "    pm.expect(json).to.have.property('error');",
-                                    "    pm.expect(json.error).to.equal('Access denied');",
+                                    "    pm.expect(json.error).to.have.property('code', 'FORBIDDEN');",
                                     "});",
                                     "",
                                     "pm.test(\"No gig data is exposed\", function () {",
@@ -2012,7 +2159,7 @@
                                     "});",
                                     "",
                                     "pm.test(\"Error message is correct\", function () {",
-                                    "    pm.expect(json.error.message).to.equal('Authentication token missing or malformed.');",
+                                    "    pm.expect(json.error.message).to.equal('Authentication required.');",
                                     "});",
                                     "",
                                     "pm.test(\"No gig data is exposed\", function () {",
@@ -2034,7 +2181,7 @@
                         "header": [
                             {
                                 "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "value": "Bearer {{clientToken}}"
                             }
                         ],
                         "url": {
@@ -2064,9 +2211,9 @@
                                     "",
                                     "const json = pm.response.json();",
                                     "",
-                                    "pm.test(\"Error message is 'Access denied'\", function () {",
+                                    "pm.test(\"Error message is 'FORBIDDEN'\", function () {",
                                     "    pm.expect(json).to.have.property('error');",
-                                    "    pm.expect(json.error).to.equal('Access denied');",
+                                    "    pm.expect(json.error).to.have.property('code', 'FORBIDDEN');",
                                     "});",
                                     "",
                                     "pm.test(\"No gig data is exposed\", function () {",
@@ -2419,7 +2566,7 @@
                                     "});",
                                     "",
                                     "pm.test(\"Error message is correct\", function () {",
-                                    "    pm.expect(json.error.message).to.equal('Authentication token missing or malformed.');",
+                                    "    pm.expect(json.error.message).to.equal('Authentication required.');",
                                     "});",
                                     "",
                                     "pm.test(\"No gig data is exposed\", function () {",
@@ -2441,7 +2588,7 @@
                         "header": [
                             {
                                 "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "value": "Bearer {{clientToken}}"
                             },
                             {
                                 "key": "Content-Type",
@@ -2484,9 +2631,9 @@
                                     "",
                                     "const json = pm.response.json();",
                                     "",
-                                    "pm.test(\"Error message is 'Access denied'\", function () {",
+                                    "pm.test(\"Error message is 'FORBIDDEN'\", function () {",
                                     "    pm.expect(json).to.have.property('error');",
-                                    "    pm.expect(json.error).to.equal('Access denied');",
+                                    "    pm.expect(json.error).to.have.property('code', 'FORBIDDEN');",
                                     "});",
                                     "",
                                     "pm.test(\"No gig data is exposed\", function () {",
@@ -2631,7 +2778,7 @@
                                     "});",
                                     "",
                                     "pm.test(\"Error message is correct\", function () {",
-                                    "    pm.expect(json.error.message).to.equal('Authentication token missing or malformed.');",
+                                    "    pm.expect(json.error.message).to.equal('Authentication required.');",
                                     "});",
                                     "",
                                     "pm.test(\"No success message is returned\", function () {",
@@ -2652,7 +2799,7 @@
                         "header": [
                             {
                                 "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "value": "Bearer {{clientToken}}"
                             }
                         ],
                         "url": {
@@ -2682,9 +2829,9 @@
                                     "",
                                     "const json = pm.response.json();",
                                     "",
-                                    "pm.test(\"Error message is 'Access denied'\", function () {",
+                                    "pm.test(\"Error message is 'FORBIDDEN'\", function () {",
                                     "    pm.expect(json).to.have.property('error');",
-                                    "    pm.expect(json.error).to.equal('Access denied');",
+                                    "    pm.expect(json.error).to.have.property('code', 'FORBIDDEN');",
                                     "});",
                                     "",
                                     "pm.test(\"No success message is returned\", function () {",
@@ -2962,153 +3109,6 @@
                                     "",
                                     "pm.environment.set(\"gigId\", json.gig.id);",
                                     "pm.environment.set(\"expectedGigRate\", 250);"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Setup - Register Client",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"name\": \"Newman Test Client\",\n    \"email\": \"{{clientEmail}}\",\n    \"password\": \"{{clientPassword}}\",\n    \"role\": \"client\"\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/auth/register",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "api",
-                                "auth",
-                                "register"
-                            ]
-                        }
-                    },
-                    "event": [
-                        {
-                            "listen": "prerequest",
-                            "script": {
-                                "exec": [
-                                    "pm.environment.set(",
-                                    "    \"clientEmail\",",
-                                    "    `newman_client_${Date.now()}@hustlehub.com`",
-                                    ");",
-                                    "",
-                                    "pm.environment.set(",
-                                    "    \"clientPassword\",",
-                                    "    \"NewmanTest#2026\"",
-                                    ");"
-                                ]
-                            }
-                        },
-                        {
-                            "listen": "test",
-                            "script": {
-                                "exec": [
-                                    "pm.test(\"Status is 201\", function () {",
-                                    "    pm.response.to.have.status(201);",
-                                    "});",
-                                    "",
-                                    "pm.test(\"Response is JSON\", function () {",
-                                    "    pm.response.to.be.json;",
-                                    "});",
-                                    "",
-                                    "const json = pm.response.json();",
-                                    "",
-                                    "pm.test(\"Registration succeeded\", function () {",
-                                    "    pm.expect(json.message).to.equal(\"User successfully registered.\");",
-                                    "});",
-                                    "",
-                                    "pm.test(\"Client was created\", function () {",
-                                    "    pm.expect(json.user).to.have.property(\"id\");",
-                                    "    pm.expect(json.user.email).to.equal(",
-                                    "        pm.environment.get(\"clientEmail\")",
-                                    "    );",
-                                    "    pm.expect(json.user.role).to.equal(\"client\");",
-                                    "});",
-                                    "",
-                                    "pm.environment.set(\"clientId\", json.user.id);"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Setup - Login Client",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"email\": \"{{clientEmail}}\",\n    \"password\": \"{{clientPassword}}\"\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/auth/login",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "api",
-                                "auth",
-                                "login"
-                            ]
-                        }
-                    },
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "exec": [
-                                    "pm.test(\"Status is 200\", function () {",
-                                    "    pm.response.to.have.status(200);",
-                                    "});",
-                                    "",
-                                    "pm.test(\"Response is JSON\", function () {",
-                                    "    pm.response.to.be.json;",
-                                    "});",
-                                    "",
-                                    "const json = pm.response.json();",
-                                    "",
-                                    "pm.test(\"Login succeeded\", function () {",
-                                    "    pm.expect(json.message).to.equal(\"Login successful.\");",
-                                    "});",
-                                    "",
-                                    "pm.test(\"JWT was returned\", function () {",
-                                    "    pm.expect(json.token).to.be.a(\"string\").and.not.empty;",
-                                    "});",
-                                    "",
-                                    "pm.test(\"Correct client account logged in\", function () {",
-                                    "    pm.expect(json.user.email).to.equal(",
-                                    "        pm.environment.get(\"clientEmail\")",
-                                    "    );",
-                                    "    pm.expect(json.user.role).to.equal(\"client\");",
-                                    "});",
-                                    "",
-                                    "pm.environment.set(\"clientToken\", json.token);"
                                 ]
                             }
                         }

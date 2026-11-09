@@ -32,7 +32,7 @@ exports.create = async (req, res, next) => {
         title: gig.title,
         description: gig.description,
         rate: gig.rate,
-        duractionHours: gig.durationHours,
+        durationHours: gig.durationHours,
         status: gig.status,
         category: gig.category,
         createdAt: gig.createdAt
