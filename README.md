@@ -734,6 +734,24 @@ try {
 }
 ```
 
+## SHA-pinned GitHub Actions and Dependabot (own feature)
+
+In order to apply some mitigation against supply chain attacks, our ci.yml pins actions/checkout and actions/setup-note to a verified working SHAs. A dependabot has been added to automate weekly pull requests to repin them and other dependencies included in our docker base images. This does potentially introduce another attack vector, which complacency and blindly accepting dependabot's PR's. As we have learnt throughout the development of this project, green on GitHub does not mean all is well in the state of Denmark. 
+
+**Threat.** Software supply chain attacks (OWASP A03:2025) [29]. Our build pulls in npm packages, Docker base images and third-party GitHub Actions. A vulnerable dependency can sit unnoticed, and an action referenced by a tag such as `actions/checkout@v4` can be changed under us: whoever controls the tag can move it to different code, and our CI runs it with access to our secrets.
+
+**Feature.** Two controls that work together:
+- **Dependabot** checks npm (backend and frontend), Docker (both Dockerfiles) and GitHub Actions every week and opens a pull request when an update or security fix is available [42].
+- **Pinned actions.** The build and test jobs reference each action by its full 40-character commit SHA instead of a tag [41]. A commit SHA can't be moved, so CI runs exactly the code we checked. Dependabot understands the `# v4.4.0` comment and opens a PR when a newer version is released, so the pins don't go stale.
+
+**Implementation.** `.github/dependabot.yml` (5 update entries) and the `uses:` lines in `.github/workflows/ci.yml`, merged in #61. Each SHA was looked up with `git ls-remote https://github.com/actions/<repo> refs/tags/v4.4.0`; the command is recorded in the commit message (`6e4cfe9`) so anyone can check or update a pin.
+
+**Test.** `grep -n "uses:" .github/workflows/ci.yml`: every build and test line ends in a 40-character SHA and a `# v4.4.0` comment, and running the `git ls-remote` command returns the same SHA. GitHub validates `dependabot.yml` when it is pushed; the "Dependabot" entry under **Insights → Dependency graph** shows the last check for each ecosystem.
+
+**Evidence.** ![Dependabot checking npm, Docker and GitHub Actions](</reports/evidence/own-feature-dependabot.png>) ![CI actions pinned to commit SHAs](</reports/evidence/own-feature-pinned-actions.png>)
+
+**Limitation.** The scan jobs added in #66 (Gitleaks, Trivy, OWASP ZAP) still reference actions by tag; pinning them the same way is the next step.
+
 ### Login Validation 
 
 The middleware exposes the array `loginValidation` that filters login payloads by blocking unknown properties, enforcing strict email formatting requirements, and validating password presence and type constraints up to a 128-character maximum. This ensures that user login requests that have malformed properties do not reach controllers, isolating the core system logic from malicious data structures.
