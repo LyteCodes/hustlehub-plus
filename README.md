@@ -1866,6 +1866,12 @@ This review maps each OWASP Top 10:2025 category [29] to the threat it poses to 
 
 ---
 
+# Sonar
+<img width="1162" height="653" alt="image" src="https://github.com/user-attachments/assets/099b5733-ba28-47d7-ad20-326e3e8e656d" />
+<img width="1027" height="710" alt="image" src="https://github.com/user-attachments/assets/193b0088-4417-4af1-9e05-fcc707115f3a" />
+<img width="1015" height="602" alt="image" src="https://github.com/user-attachments/assets/b642e8a2-519e-49c3-8bcf-5273419b5e07" />
+<img width="1015" height="502" alt="image" src="https://github.com/user-attachments/assets/cb9cafd8-a1a9-48d6-b1a6-94cdd14bc232" />
+
 
 # References 
 
