@@ -55,7 +55,7 @@ const handleValidationErrors = (req, res, next) => {
  */
 const rejectUnknownFields = (allowedFields) => {
   return (req, res, next) => {
-    const unknownFields = Object.keys(req.body).filter(
+    const unknownFields = Object.keys(req.body ?? {}).filter(
       (field) => !allowedFields.includes(field),
     );
     if (unknownFields.length > 0) {
