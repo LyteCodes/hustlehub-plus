@@ -25,8 +25,6 @@ compose docker:
 Frontend website: https://localhost:3000
 
 The Following vredentials can be used:
-|connor@example.com|Password1!|Client|
-|jessica@example.com|Password1!|Freelancer|
 |admin@hustlehub.example.com|Password1!|Admin|
 
 ## Demo
