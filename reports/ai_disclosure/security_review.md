@@ -1,0 +1,7 @@
+Disclosure of AI Usage in my Assessment:
+
+Sections: README.md "Security Review (OWASP Top 10:2025)" (threats, controls and evidence table; findings fixed during Part 3; residual risks) and references [29]–[47] (KAN-119).  
+Name of AI tool(s) used: Claude Code (Claude Opus 5.5, Anthropic)  
+Purpose/intention behind use: Drafting the security review. I asked for an OWASP Top 10:2025 table based on each merged pull request, with references taken from our references.bib, appended to the README's existing list, and with every link checked to be live and to actually support the claim it is cited for. The AI read the code on `test` (e46a615), traced each control to the pull request or commit that introduced it from the git history, re-ran `npm audit`, and fetched every source. It dropped two dead links (OWASP JWT cheat sheet: 404; OWASP NoSQL injection: redirects to a home page) and found that our bib entry for Mongoose `sanitizeFilter` pointed at a page that doesn't mention it. Its first draft numbered the new references from [20], clashing with the README's existing [20]–[28]; it caught and fixed this before I pasted it. The residual risks list includes a finding from the same session (admin user list exposing password hashes). I reviewed the section before committing it.  
+Date(s) in which generative AI was used: 2026-11-09  
+A link or screenshot to the actual generative AI chat: <img width="1606" height="859" alt="Screenshot From 2026-11-09 17-27-12" src="https://github.com/user-attachments/assets/921a7ef9-c591-4fe5-8681-6a6f4b72c716" />  
