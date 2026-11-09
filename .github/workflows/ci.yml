@@ -37,7 +37,10 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install backend dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Audit backend dependencies
+        run: npm audit --audit-level=high || true
 
       - name: Generate a throwaway JWT secret for this run
         run: echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
@@ -98,15 +101,34 @@ jobs:
           npx newman run \
             tests/postman/HustleHub-API.postman_collection.json \
             -e tests/postman/HustleHub-Local.postman_environment.json \
-            --folder "Bookings" \
             --env-var "baseUrl=https://127.0.0.1:3000" \
             --insecure \
-            --reporters cli
+            --reporters cli,junit,htmlextra \
+            --reporter-junit-export /tmp/newman-results.xml \
+            --reporter-htmlextra-export /tmp/newman-report.html
         continue-on-error: true
 
       - name: Show backend log
         if: always()
         run: cat /tmp/hustlehub-backend.log
+
+      - name: Upload backend log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-ci-log
+          path: /tmp/hustlehub-backend.log
+          if-no-files-found: ignore
+
+      - name: Upload Newman reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-reports
+          path: |
+            /tmp/newman-results.xml
+            /tmp/newman-report.html
+          if-no-files-found: ignore
 
       - name: Backend CI test gate
         if: always()
@@ -145,7 +167,10 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Audit frontend dependencies
+        run: npm audit --audit-level=high || true
 
       - name: Run frontend tests
         id: frontend_tests
@@ -164,4 +189,122 @@ jobs:
                 "${{ steps.frontend_build.outcome }}" == "failure" ]]; then
             echo "One or more frontend checks failed."
             exit 1
+          fi
+
+  gitleaks:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: dir --redact .
+
+  docker-security:
+    name: Docker Build and Trivy Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose configuration
+        run: docker compose config --quiet
+
+      - name: Build Docker images
+        run: docker build -t insy7314-2026-hustlehub-plus-part2-st10286905-backend backend && docker build -t insy7314-2026-hustlehub-plus-part2-st10286905-frontend frontend
+
+      - name: Scan backend image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: insy7314-2026-hustlehub-plus-part2-st10286905-backend
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Scan frontend image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: insy7314-2026-hustlehub-plus-part2-st10286905-frontend
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+  zap:
+    name: OWASP ZAP API Scan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      NODE_ENV: test
+      PORT: 3000
+      MONGO_URI: ${{ secrets.MONGO_URI }}
+      USE_HTTPS: "true"
+      CLIENT_ORIGIN: http://localhost:8080
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Generate a throwaway JWT secret for this run
+        run: echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+
+      - name: Initialise backend
+        run: npm run init
+
+      - name: Start backend
+        run: |
+          node src/server.js > /tmp/hustlehub-zap-backend.log 2>&1 &
+          echo $! > /tmp/hustlehub-zap-backend.pid
+
+      - name: Wait for backend
+        run: |
+          for i in {1..30}; do
+            if curl --fail --silent --insecure https://127.0.0.1:3000/api/gigs > /dev/null; then
+              echo "Backend is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/hustlehub-zap-backend.log
+          exit 1
+
+      - name: OWASP ZAP API scan
+        uses: zaproxy/action-api-scan@v0.9.0
+        with:
+          target: https://127.0.0.1:3000/api-docs/openapi.json
+          format: openapi
+          allow_issue_writing: false
+          fail_action: true
+          cmd_options: "-I -k"
+
+      - name: Upload ZAP backend log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-backend-log
+          path: /tmp/hustlehub-zap-backend.log
+          if-no-files-found: ignore
+
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f /tmp/hustlehub-zap-backend.pid ]; then
+            kill "$(cat /tmp/hustlehub-zap-backend.pid)" || true
           fi

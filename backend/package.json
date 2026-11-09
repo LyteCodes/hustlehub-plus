@@ -39,6 +39,7 @@
     "jest": "^30.5.2",
     "mongodb-memory-server": "^11.3.0",
     "newman": "^6.2.3",
+    "newman-reporter-htmlextra": "^1.23.1",
     "nodemon": "^3.1.14",
     "supertest": "^7.3.2"
   }
